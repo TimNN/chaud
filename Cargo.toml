@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["chaud"]
+
+[workspace.package]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/TimNN/chaud"
+
+[workspace.lints.rust]
+
+[workspace.lints.clippy]

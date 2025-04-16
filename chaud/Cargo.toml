@@ -1,0 +1,15 @@
+[package]
+name = "chaud"
+version = "0.1.0"
+
+readme = "README.md"
+license.workspace = true
+repository.workspace = true
+
+edition = "2024"
+rust-version = "1.86"
+
+[lints]
+workspace = true
+
+[dependencies]
