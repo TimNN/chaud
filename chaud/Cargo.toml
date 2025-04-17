@@ -9,7 +9,25 @@ repository.workspace = true
 edition = "2024"
 rust-version = "1.86"
 
+[features]
+
+# Enable `Handle::create*` for `unsafe` functions.
+create-unsafe = []
+# Enable `Handle::create*` for `extern` functions.
+create-extern = []
+
+# Enable hot-reloading functionality.
+#
+# SAFETY: See the [Safety](https://docs.rs/chaud#safety) section in the crate
+# documentation.
+unsafe-hot-reload = []
+
+[dependencies]
+
 [lints]
 workspace = true
 
-[dependencies]
+[package.metadata.docs.rs]
+all-features = true
+# No need to build multiple targets, the docs are all the same.
+targets = []
