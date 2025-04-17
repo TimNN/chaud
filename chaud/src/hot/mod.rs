@@ -1,19 +1,18 @@
-use crate::FnPtrBounds;
+pub use self::handle::TypedHandle;
+use self::handle::{ErasedFnPtr, ErasedHandle};
 
-#[derive(Copy, Clone)]
-pub struct TypedHandle<F: FnPtrBounds> {
-    f: F,
-}
+mod handle;
 
-impl<F: FnPtrBounds> TypedHandle<F> {
-    /// # Safety
-    ///
-    /// `F` must be a function pointer.
-    pub unsafe fn create(f: F) -> Self {
-        Self { f }
-    }
+/// # Safety
+///
+/// `F` must be a function pointer.
+#[inline]
+pub unsafe fn create_handle<F: crate::FnPtrBounds>(f: F) -> TypedHandle<F> {
+    // SAFETY: `f` is a function pointer.
+    let erased = unsafe { ErasedFnPtr::erase(f) };
 
-    pub fn get(self) -> F {
-        self.f
-    }
+    let handle = ErasedHandle::new(erased);
+
+    // SAFETY: `handle` was created from `F`.
+    unsafe { TypedHandle::<F>::new(handle) }
 }

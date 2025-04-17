@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/TimNN/chaud"
 
 [workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "forbid"
 
 [workspace.lints.clippy]
 multiple_unsafe_ops_per_block = "warn"

@@ -13,7 +13,7 @@ macro_rules! one {
 
                 #[cfg(feature = "unsafe-hot-reload")]
                 // SAFETY: `f` must be a function pointer, which it is.
-                return Self { repr: unsafe { crate::hot::TypedHandle::create(f) } };
+                return Self { repr: unsafe { crate::hot::create_handle(f) } };
             }
         }
     }
