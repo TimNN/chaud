@@ -10,4 +10,8 @@ repository = "https://github.com/TimNN/chaud"
 
 [workspace.lints.clippy]
 multiple_unsafe_ops_per_block = "warn"
+self_named_module_files = "warn"
 undocumented_unsafe_blocks = "warn"
+unused_trait_names = "warn"
+
+pedantic = { level = "warn", priority = -1 }

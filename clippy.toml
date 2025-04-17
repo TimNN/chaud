@@ -1,0 +1,2 @@
+# Also require `clippy::missing_safety_doc` on private items.
+check-private-items = true

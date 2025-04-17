@@ -1,7 +1,7 @@
 use core::error::Error;
 use std::{env, fs};
 
-static STYLE: &str = r#"
+static STYLE: &str = r"
 <style>
 blockquote {
   border-left: 0.25em solid crimson;
@@ -9,14 +9,14 @@ blockquote {
   margin: 0 0 0.75em 0;
 }
 </style>
-"#;
+";
 
-static DOCTEST_HEADER: &str = r#"
+static DOCTEST_HEADER: &str = r"
 ```no_run
 # mod some_other_crate {
 #   pub fn do_something() -> u32 { 42 }
 # }
-"#;
+";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut readme = fs::read_to_string("README.md")?;
