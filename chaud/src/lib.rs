@@ -37,8 +37,6 @@ impl<F: Copy + Send + Sized + 'static> FnPtrBounds for F {}
 /// enabled.
 ///
 /// ```
-/// # if cfg!(feature = "unsafe-hot-reload") { return }
-/// #
 /// # use chaud::Handle;
 /// #
 /// fn do_some_math(a: u32, b: u32) -> u32 { a + b }
@@ -95,8 +93,6 @@ mod get {
     /// without storing it anywhere.
     ///
     /// ```
-    /// # if cfg!(feature = "unsafe-hot-reload") { return }
-    /// #
     /// # use chaud::Handle;
     /// #
     /// fn do_some_math(a: u32, b: u32) -> u32 { a + b }

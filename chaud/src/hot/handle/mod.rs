@@ -52,7 +52,7 @@
     clippy::missing_panics_doc,
     reason = "don't want this to trigger for private items"
 )]
-#![allow(dead_code, reason = "FIXME: remove once module is fully in use")]
+#![allow(dead_code, reason = "TODO: remove once module is fully in use")]
 
 pub use self::atomic::*;
 pub use self::erased::*;

@@ -20,6 +20,9 @@ impl ErasedHandle {
     pub fn new(f: ErasedFnPtr) -> Self {
         let inner = Box::leak(Box::new(AtomicFnPtr::new(f)));
 
+        #[cfg(miri)]
+        crate::hot::util::miri::intentionally_leaked(inner);
+
         // SAFETY: Initializing does not count as a change. The other
         // requirements are enforced by `ErasedFnPtr`.
         Self { inner }
@@ -27,16 +30,21 @@ impl ErasedHandle {
 
     /// # Safety
     ///
-    /// FIXME
+    /// The passed argument must have the same actual type as `self`.
     #[inline]
     pub(super) fn set(self, f: ErasedFnPtr) {
-        // SAFETY: FIXME
+        // SAFETY: The caller must ensure that `f` has the same actual type as
+        // `self`.
+        // SAFETY: `self` / `inner` are consumed by value, so `inner` does not
+        // change.
         unsafe { self.inner.store_relaxed(f) };
     }
 
     #[inline]
     #[must_use]
     pub(super) fn get(self) -> ErasedFnPtr {
+        // SAFETY: `self` / `inner` are consumed by value, so `inner` does not
+        // change.
         self.inner.load_relaxed()
     }
 }
