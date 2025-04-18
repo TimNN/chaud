@@ -20,9 +20,56 @@ create-extern = []
 #
 # SAFETY: See the [Safety](https://docs.rs/chaud#safety) section in the crate
 # documentation.
-unsafe-hot-reload = []
+unsafe-hot-reload = [
+    "dep:anyhow",
+    "dep:foldhash",
+    "dep:libc",
+    "dep:log",
+    "dep:nanoserde",
+    "dep:notify",
+    "dep:object",
+    "dep:rustc-demangle",
+    "dep:topological-sort",
+]
 
 [dependencies]
+anyhow = { version = "1.0.98", optional = true }
+foldhash = { version = "0.1.5", optional = true }
+libc = { version = "0.2.172", optional = true }
+log = { version = "0.4.27", optional = true }
+notify = { version = "8.0.0", optional = true }
+rustc-demangle = { version = "0.1.24", optional = true }
+topological-sort = { version = "0.2.2", optional = true }
+
+[dependencies.nanoserde]
+version = "0.2.1"
+optional = true
+default-features = false
+features = ["json"]
+
+[dependencies.object]
+version = "0.36.7"
+optional = true
+default-features = false
+features = ["read_core"]
+
+[target.'cfg(windows)'.dependencies.object]
+version = "0.36.7"
+optional = true
+default-features = false
+features = ["pe"]
+
+[target.'cfg(target_os = "macos")'.dependencies.object]
+version = "0.36.7"
+optional = true
+default-features = false
+features = ["macho"]
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.object]
+version = "0.36.7"
+optional = true
+default-features = false
+features = ["elf"]
 
 [lints]
 workspace = true
