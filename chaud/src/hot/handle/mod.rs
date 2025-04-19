@@ -48,11 +48,6 @@
 //!   [RFC 3458](https://github.com/rust-lang/rust/issues/132922) is
 //!   implemented.
 //! * Methods should be `pub(super)` until they are needed outside this module.
-#![allow(
-    clippy::missing_panics_doc,
-    reason = "don't want this to trigger for private items"
-)]
-#![allow(dead_code, reason = "TODO: remove once module is fully in use")]
 
 pub use self::atomic::*;
 pub use self::erased::*;

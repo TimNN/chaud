@@ -1,6 +1,15 @@
+//! Hot-reloading functionality.
+#![allow(
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    reason = "don't want this to trigger for private items"
+)]
+#![allow(dead_code, reason = "TODO: remove once module is fully in use")]
+
 pub use self::handle::TypedHandle;
 use self::handle::{ErasedFnPtr, ErasedHandle};
 
+mod cargo;
 mod handle;
 mod util;
 

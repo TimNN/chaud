@@ -26,6 +26,7 @@ silence-log-level-warning = []
 # SAFETY: See https://docs.rs/chaud#safety
 unsafe-hot-reload = [
     "dep:anyhow",
+    "dep:camino",
     "dep:foldhash",
     "dep:libc",
     "dep:log",
@@ -38,6 +39,7 @@ unsafe-hot-reload = [
 
 [dependencies]
 anyhow = { version = "1.0.98", optional = true }
+camino = { version = "1.1.9", optional = true }
 foldhash = { version = "0.1.5", optional = true }
 libc = { version = "0.2.172", optional = true }
 log = { version = "0.4.27", optional = true }
