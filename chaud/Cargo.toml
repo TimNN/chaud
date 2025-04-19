@@ -16,10 +16,14 @@ create-unsafe = []
 # Enable `Handle::create*` for `extern` functions.
 create-extern = []
 
+# Do not print a warning to stderr if logging is disabled for Chaud.
+#
+# See https://docs.rs/chaud#logging
+silence-log-level-warning = []
+
 # Enable hot-reloading functionality.
 #
-# SAFETY: See the [Safety](https://docs.rs/chaud#safety) section in the crate
-# documentation.
+# SAFETY: See https://docs.rs/chaud#safety
 unsafe-hot-reload = [
     "dep:anyhow",
     "dep:foldhash",
