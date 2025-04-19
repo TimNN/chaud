@@ -10,6 +10,7 @@ pub use self::handle::TypedHandle;
 use self::handle::{ErasedFnPtr, ErasedHandle};
 
 mod cargo;
+mod dylib;
 mod handle;
 mod util;
 

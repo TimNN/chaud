@@ -10,7 +10,7 @@ pub struct ErasedHandle {
     /// * `inner` itself must never change. (The value stored in the
     ///   [`AtomicFnPtr`] may change).
     /// * The actual type must be a function pointer implementing
-    ///   [`FnPtrBounds`].
+    ///   [`crate::FnPtrBounds`].
     inner: &'static AtomicFnPtr,
 }
 

@@ -1,7 +1,7 @@
 use crate::FnPtrBounds;
 use core::ffi::c_void;
-use core::mem;
 use core::ptr::NonNull;
+use core::{fmt, mem, ptr};
 
 pub(super) type ErasedFnPtrPointee = c_void;
 
@@ -25,6 +25,18 @@ unsafe impl Send for ErasedFnPtr {}
 
 // SAFETY: `ErasedFnPtr` is send and does not allow mutating access.
 unsafe impl Sync for ErasedFnPtr {}
+
+impl PartialEq<RawErasedFnPtr> for ErasedFnPtr {
+    fn eq(&self, &other: &RawErasedFnPtr) -> bool {
+        ptr::eq(self.inner.as_ptr(), other)
+    }
+}
+
+impl fmt::Debug for ErasedFnPtr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ErasedFnPtr").field(&self.inner).finish()
+    }
+}
 
 impl ErasedFnPtr {
     /// # Safety
@@ -74,7 +86,7 @@ impl ErasedFnPtr {
 
     #[inline]
     #[must_use]
-    pub(super) fn raw(self) -> RawErasedFnPtr {
+    pub fn raw(self) -> RawErasedFnPtr {
         // SAFETY: `self` / `inner` are consumed by value, so `inner` does not
         // change.
         self.inner.as_ptr()

@@ -9,7 +9,7 @@ pub struct AtomicFnPtr {
     ///
     /// * The actual type must never change.
     /// * The actual type must be a function pointer implementing
-    ///   [`FnPtrBounds`].
+    ///   [`crate::FnPtrBounds`].
     inner: AtomicPtr<ErasedFnPtrPointee>,
 }
 
