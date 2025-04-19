@@ -1,5 +1,5 @@
 use crate::hot::util::IgnorePoisonExt;
-use std::sync::Mutex;
+use crate::util::unpoision::Mutex;
 
 pub trait Leakable: 'static + Send + Sync {}
 
@@ -19,5 +19,5 @@ impl<T: 'static + Send + Sync> Leakable for T {}
 pub fn intentionally_leaked(val: &'static impl Leakable) {
     static LEAKED: Mutex<Vec<&'static dyn Leakable>> = Mutex::new(vec![]);
 
-    LEAKED.lock().ignore_poison().push(val);
+    LEAKED.lock().push(val);
 }
