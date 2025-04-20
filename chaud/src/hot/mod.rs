@@ -13,4 +13,6 @@ mod cargo;
 mod dylib;
 mod handle;
 mod handles;
+mod registry;
 mod util;
+mod workspace;

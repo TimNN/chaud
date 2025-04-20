@@ -81,8 +81,9 @@ fn lookup_or_create_sym(f: ErasedFnPtr) -> ErasedHandle {
 
     match insert_or_get_by_sym(&sym, f) {
         SymResult::Created(h) => {
+            // Avoid the hot-reloading infrastructure in unit tests.
             if !cfg!(test) {
-                // TODO: register
+                HANDLES.registry.lock().register(sym, h);
             }
             h
         }
