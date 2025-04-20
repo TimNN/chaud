@@ -16,6 +16,13 @@ pub struct Sym {
     name: Box<str>,
 }
 
+impl From<&Sym> for Sym {
+    #[inline]
+    fn from(value: &Sym) -> Self {
+        value.clone()
+    }
+}
+
 impl fmt::Debug for Sym {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Sym").field(&self.name).finish()
@@ -24,11 +31,7 @@ impl fmt::Debug for Sym {
 
 impl Sym {
     pub fn of(f: ErasedFnPtr) -> Result<Self> {
-        // SAFETY: We keep the result around as briefly as possible, and
-        // otherwise rely on the library providing `f` not being unloaded during
-        // this function. This is covered under the `unsafe-hot-reload` feature
-        // opt-in.
-        let resolved = unsafe { resolve(f) };
+        let resolved = resolve(f);
         let resolved = resolved.with_context(etx!("Failed to resolve {f:?})"))?;
 
         // FIXME(https://github.com/rust-lang/rust/issues/134915): Switch to
@@ -60,14 +63,7 @@ impl Sym {
     }
 }
 
-/// # Safety
-///
-/// It is unclear how long the data returned by `dladdr` is valid. According to
-/// <https://stackoverflow.com/a/64160509> "until the object is unloaded via
-/// `dlclose`".
-///
-/// The returned `&[u8]` must only be used as long as whatever that is.
-unsafe fn resolve<'a>(f: ErasedFnPtr) -> Result<&'a [u8]> {
+fn resolve(f: ErasedFnPtr) -> Result<&'static [u8]> {
     let mut info = libc::Dl_info {
         dli_fname: ptr::null(),
         dli_fbase: ptr::null_mut(),
@@ -89,9 +85,15 @@ unsafe fn resolve<'a>(f: ErasedFnPtr) -> Result<&'a [u8]> {
     );
 
     // SAFETY: If `dladdr` did not return an error, and the name is not null
-    // (checked above), it is assumed to be a valid C string, that is valid for
-    // the user-supplied lifetime `'a`.
-    let name = unsafe { CStr::from_ptr::<'a>(info.dli_sname) };
+    // (checked above), it is assumed to be a valid C string.
+    //
+    // It is unclear how long the data returned by `dladdr` is valid. According
+    // to <https://stackoverflow.com/a/64160509> "until the object is unloaded
+    // via `dlclose`". We already assume that `f` (a function pointer) is valid
+    // for `'static` (thus that the underlying object is never unloaded). So
+    // we might as well assume that the symbol name is valid for `'static`. Any
+    // uncertainty here is covered by the `unsafe-hot-reload` feature opt-in.
+    let name = unsafe { CStr::from_ptr::<'static>(info.dli_sname) };
 
     ensure!(
         f == info.dli_saddr,

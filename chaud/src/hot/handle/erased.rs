@@ -1,4 +1,6 @@
 use super::{AtomicFnPtr, ErasedFnPtr};
+use core::fmt;
+use core::ptr;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -12,6 +14,21 @@ pub struct ErasedHandle {
     /// * The actual type must be a function pointer implementing
     ///   [`crate::FnPtrBounds`].
     inner: &'static AtomicFnPtr,
+}
+
+impl PartialEq for ErasedHandle {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self.inner, other.inner)
+    }
+}
+
+impl fmt::Debug for ErasedHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ErasedFnPtr")
+            .field(&ptr::from_ref(self.inner))
+            .finish()
+    }
 }
 
 impl ErasedHandle {

@@ -28,14 +28,17 @@ unsafe-hot-reload = [
     "dep:anyhow",
     "dep:camino",
     "dep:foldhash",
+    "dep:hashbrown",
     "dep:libc",
     "dep:log",
     "dep:nanoserde",
     "dep:notify",
     "dep:object",
     "dep:rustc-demangle",
+    "dep:toml_edit",
     "dep:topological-sort",
 ]
+
 
 [dependencies]
 anyhow = { version = "1.0.98", optional = true }
@@ -45,7 +48,14 @@ libc = { version = "0.2.172", optional = true }
 log = { version = "0.4.27", optional = true }
 notify = { version = "8.0.0", optional = true }
 rustc-demangle = { version = "0.1.24", optional = true }
+toml_edit = { version = "0.22.24", optional = true }
 topological-sort = { version = "0.2.2", optional = true }
+
+[dependencies.hashbrown]
+version = "0.15.2"
+optional = true
+default-features = false
+features = ["inline-more"]
 
 [dependencies.nanoserde]
 version = "0.2.1"
