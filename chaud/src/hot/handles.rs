@@ -1,11 +1,12 @@
 use super::TypedHandle;
 use super::dylib::Sym;
 use super::handle::{ErasedFnPtr, ErasedHandle};
+use super::registry::Registry;
 use super::util::minilog;
-use super::util::unpoison::{Mutex, RwLock};
 use crate::FnPtrBounds;
 use foldhash::fast::FixedState;
 use hashbrown::hash_map;
+use parking_lot::{Mutex, RwLock};
 
 /// A map of [`ErasedHandle`]s keyed by `K`, intended to be stored in a static.
 ///
@@ -16,11 +17,13 @@ type HandleMap<K> = hashbrown::HashMap<K, ErasedHandle, FixedState>;
 struct Handles {
     by_ptr: RwLock<HandleMap<ErasedFnPtr>>,
     by_sym: Mutex<HandleMap<Sym>>,
+    registry: Mutex<Registry>,
 }
 
 static HANDLES: Handles = Handles {
     by_ptr: RwLock::new(HandleMap::with_hasher(FixedState::with_seed(0))),
     by_sym: Mutex::new(HandleMap::with_hasher(FixedState::with_seed(0))),
+    registry: Mutex::new(Registry::new()),
 };
 
 /// # Safety

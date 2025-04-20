@@ -1,5 +1,5 @@
 use log::{Level, LevelFilter, Log, Metadata, Record};
-use std::sync::Once;
+use parking_lot::Once;
 
 struct MiniLogger;
 

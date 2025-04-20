@@ -8,4 +8,3 @@ mod etx;
 pub mod minilog;
 #[cfg(miri)]
 pub mod miri;
-pub mod unpoison;
