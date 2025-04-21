@@ -16,3 +16,5 @@ undocumented_unsafe_blocks = "warn"
 unused_trait_names = "warn"
 
 pedantic = { level = "warn", priority = -1 }
+match_bool = "allow"
+single_match_else = "allow"
