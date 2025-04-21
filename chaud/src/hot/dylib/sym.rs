@@ -1,4 +1,4 @@
-use crate::hot::cargo::metadata::TargetName;
+use crate::hot::cargo::metadata::KrateName;
 use crate::hot::handle::ErasedFnPtr;
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result, bail, ensure};
@@ -57,9 +57,9 @@ impl Sym {
 
     #[inline]
     #[must_use]
-    pub fn krate(&self) -> TargetName {
+    pub fn krate(&self) -> KrateName {
         let krate = self.name.split_once("::").expect("unreachable").0;
-        TargetName::borrowed(krate)
+        KrateName::borrowed(krate)
     }
 }
 

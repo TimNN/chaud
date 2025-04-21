@@ -47,6 +47,11 @@ impl Package {
 #[derive(Debug, DeJson, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[nserde(transparent)]
 pub struct PackageName(String);
+impl PackageName {
+    pub fn to_krate(&self) -> KrateName<'static> {
+        KrateName(Cow::Owned(self.0.replace('-', "_")))
+    }
+}
 
 #[derive(Debug, DeJson)]
 pub struct Dependency {
@@ -84,17 +89,12 @@ impl DeJson for DependencyKind {
 
 #[derive(Debug, DeJson)]
 pub struct Target {
-    name: TargetName<'static>,
     kind: Vec<TargetKind>,
     #[nserde(proxy = "String")]
     src_path: Utf8PathBuf,
 }
 
 impl Target {
-    pub fn name(&self) -> &TargetName {
-        &self.name
-    }
-
     pub fn kind(&self) -> &[TargetKind] {
         &self.kind
     }
@@ -105,17 +105,17 @@ impl Target {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TargetName<'a>(Cow<'a, str>);
+pub struct KrateName<'a>(Cow<'a, str>);
 
-impl DeJson for TargetName<'_> {
+impl DeJson for KrateName<'_> {
     fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
         s.string(i)?;
-        Ok(TargetName(Cow::Owned(s.strbuf.clone())))
+        Ok(KrateName(Cow::Owned(s.strbuf.clone())))
     }
 }
 
-impl<'a> TargetName<'a> {
-    pub fn borrowed(name: &'a str) -> TargetName<'a> {
+impl<'a> KrateName<'a> {
+    pub fn borrowed(name: &'a str) -> KrateName<'a> {
         Self(Cow::Borrowed(name))
     }
 }

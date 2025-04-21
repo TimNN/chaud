@@ -57,7 +57,7 @@ topological-sort = { version = "0.2.2", optional = true }
 version = "0.15.2"
 optional = true
 default-features = false
-features = ["inline-more"]
+features = ["default-hasher", "inline-more"]
 
 [dependencies.nanoserde]
 version = "0.2.1"
