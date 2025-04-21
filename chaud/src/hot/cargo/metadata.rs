@@ -26,6 +26,7 @@ impl Metadata {
 pub struct Package {
     name: PackageName,
     version: String,
+    dependencies: Vec<Dependency>,
     targets: Vec<Target>,
 }
 
@@ -46,6 +47,40 @@ impl Package {
 #[derive(Debug, DeJson, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[nserde(transparent)]
 pub struct PackageName(String);
+
+#[derive(Debug, DeJson)]
+pub struct Dependency {
+    name: PackageName,
+    kind: DependencyKind,
+}
+
+impl Dependency {
+    pub fn name(&self) -> &PackageName {
+        &self.name
+    }
+
+    pub fn kind(&self) -> DependencyKind {
+        self.kind
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum DependencyKind {
+    Normal,
+    Build,
+    Other,
+}
+
+impl DeJson for DependencyKind {
+    fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
+        s.string(i)?;
+        match s.strbuf.as_ref() {
+            "normal" => Ok(Self::Normal),
+            "build" => Ok(Self::Build),
+            _ => Ok(Self::Other),
+        }
+    }
+}
 
 #[derive(Debug, DeJson)]
 pub struct Target {
@@ -85,7 +120,7 @@ impl<'a> TargetName<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TargetKind {
     Dylib,
     CustomBuild,
