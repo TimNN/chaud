@@ -1,17 +1,22 @@
 use crate::hot::cargo::metadata::Metadata;
 use anyhow::{Context as _, Result};
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use std::fs;
 
 #[derive(Debug)]
 pub struct BuildEnv {
     profile: String,
+    lib_dir: Utf8PathBuf,
     chaud_dir: Utf8PathBuf,
 }
 
 impl BuildEnv {
     pub(super) fn new(meta: &Metadata) -> Result<Self> {
         new_inner(meta).context("Failed to load build env")
+    }
+
+    pub(super) fn lib_dir(&self) -> &Utf8Path {
+        &self.lib_dir
     }
 }
 
@@ -32,7 +37,7 @@ fn new_inner(_meta: &Metadata) -> Result<BuildEnv> {
     let chaud_dir = exe_dir.join("chaud");
     fs::create_dir_all(&chaud_dir)?;
 
-    let this = BuildEnv { profile, chaud_dir };
+    let this = BuildEnv { profile, lib_dir: exe_dir.to_owned(), chaud_dir };
 
     log::debug!("{this:?}");
 

@@ -1,6 +1,7 @@
 use crate::hot::util::CommandExt as _;
 use anyhow::{Context as _, Result};
 use camino::{Utf8Path, Utf8PathBuf};
+use core::fmt;
 use core::str::Chars;
 use nanoserde::{DeJson, DeJsonErr, DeJsonState};
 use std::borrow::Cow;
@@ -26,6 +27,8 @@ impl Metadata {
 pub struct Package {
     name: PackageName,
     version: String,
+    #[nserde(proxy = "String")]
+    manifest_path: Utf8PathBuf,
     dependencies: Vec<Dependency>,
     targets: Vec<Target>,
 }
@@ -39,6 +42,14 @@ impl Package {
         &self.version
     }
 
+    pub fn manifest_path(&self) -> &Utf8Path {
+        &self.manifest_path
+    }
+
+    pub fn dependencies(&self) -> &[Dependency] {
+        &self.dependencies
+    }
+
     pub fn targets(&self) -> &[Target] {
         &self.targets
     }
@@ -47,9 +58,16 @@ impl Package {
 #[derive(Debug, DeJson, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[nserde(transparent)]
 pub struct PackageName(String);
+
 impl PackageName {
     pub fn to_krate(&self) -> KrateName<'static> {
         KrateName(Cow::Owned(self.0.replace('-', "_")))
+    }
+}
+
+impl fmt::Display for PackageName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "`{}`", self.0)
     }
 }
 
@@ -117,6 +135,10 @@ impl DeJson for KrateName<'_> {
 impl<'a> KrateName<'a> {
     pub fn borrowed(name: &'a str) -> KrateName<'a> {
         Self(Cow::Borrowed(name))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
