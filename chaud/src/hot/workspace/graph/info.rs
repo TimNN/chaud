@@ -5,7 +5,7 @@ use crate::hot::cargo::metadata::{
 };
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result, ensure};
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 
@@ -57,6 +57,20 @@ impl KrateInfo {
 
     pub(super) fn is_dylib(&self) -> bool {
         self.dylib_paths().is_some()
+    }
+
+    pub(super) fn paths_iter(&self) -> impl Iterator<Item = &Utf8Path> {
+        let paths: [Option<&Utf8Path>; 3] = if let Some(paths) = &self.paths {
+            [
+                Some(&paths.src_dir),
+                Some(&paths.root_dir),
+                paths.build_dir.as_ref().map(AsRef::as_ref),
+            ]
+        } else {
+            [None, None, None]
+        };
+
+        paths.into_iter().flatten()
     }
 }
 

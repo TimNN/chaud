@@ -14,3 +14,4 @@ mod def;
 mod env;
 mod index;
 mod info;
+mod paths;

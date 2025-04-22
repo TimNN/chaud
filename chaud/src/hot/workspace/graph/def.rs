@@ -1,5 +1,6 @@
 use super::data::KrateData;
 use super::env::BuildEnv;
+use super::paths::PathMap;
 use super::{KrateIdx, KrateIndex};
 use crate::hot::cargo::metadata::Metadata;
 use crate::hot::util::OrderedTopo;
@@ -11,6 +12,7 @@ pub struct Graph {
     env: BuildEnv,
     index: KrateIndex,
     krates: Box<[KrateData]>,
+    path_map: PathMap,
     reload_order: Box<[KrateIdx]>,
 }
 
@@ -34,12 +36,14 @@ fn new_inner() -> Result<&'static Graph> {
     let env = BuildEnv::new(&meta)?;
     let index = KrateIndex::new(meta.packages())?;
     let krates = load_krates(&meta, &env, &index)?;
+    let path_map = PathMap::new(&krates)?;
     let reload_order = reload_order(&krates)?;
 
     Ok(Box::leak(Box::new(Graph {
         env,
         index,
         krates,
+        path_map,
         reload_order,
     })))
 }
