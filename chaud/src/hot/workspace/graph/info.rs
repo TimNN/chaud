@@ -38,13 +38,29 @@ impl fmt::Display for KrateInfo {
 }
 
 impl KrateInfo {
-    pub(super) fn new(index: &KrateIndex, env: &BuildEnv, pkg: &Package) -> Result<Self> {
-        new_inner(index, env, pkg)
+    pub(super) fn new(env: &BuildEnv, index: &KrateIndex, pkg: &Package) -> Result<Self> {
+        new_inner(env, index, pkg)
             .with_context(etx!("Failed to build crate info for {}", pkg.name()))
+    }
+
+    pub(super) fn idx(&self) -> KrateIdx {
+        self.idx
+    }
+
+    pub(super) fn deps(&self) -> &[KrateIdx] {
+        &self.deps
+    }
+
+    pub(super) fn dylib_paths(&self) -> Option<&DylibPaths> {
+        self.paths.as_ref()
+    }
+
+    pub(super) fn is_dylib(&self) -> bool {
+        self.dylib_paths().is_some()
     }
 }
 
-fn new_inner(index: &KrateIndex, env: &BuildEnv, package: &Package) -> Result<KrateInfo> {
+fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<KrateInfo> {
     let pkg = package.name().clone();
     let idx = index
         .get_pkg(&pkg)
