@@ -10,9 +10,48 @@ week (though I'll try to reply faster than that).
 
 ## Code Style
 
+### Lints
+
+On the latest stable release:
+
+- There must not be any warnings from `rustc`, `clippy` or `rustdoc`.
+
+- There must not be any `rustfmt` diffs.
+
+This is checked by CI.
+
 ### Naming
 
 - Use `krate` instead of `crate` in all identifiers.
+
+### Organization
+
+- Keep modules small, and use `mod.rs` for modules with submodules.
+
+- Within a module, order items approximately as follows:
+
+  1. Types, constants and statics that are important for the module,
+     irrespective of visibility.
+
+  2. Public API
+
+  - _Short_ trait implementations (e.g. `PartialEq`) go directly beneath the
+    type definition. Larger trait implementations go beneath the main `impl`
+    block of the type.
+
+  - Within the main `impl` block of a type: Constructors, then getters, then
+    complex functions.
+
+  3. Internal helpers (functions, types)
+
+     - Free functions are usually preferable over static methods.
+
+     - A helper should usually be defined after its first use. (i.e. for
+       `fn foo() { bar() } fn bar() {}`, `foo` should be ordered before `bar`).
+
+- The item ordering is somewhat flexible (and the existing code doesn't
+  necessarily always follow it perfectly). It's documented here mainly so that I
+  have something to refer to, to try and structure things consistently.
 
 ### Logging
 
