@@ -1,3 +1,5 @@
+//! The **def**inition of the [`Graph`] type.
+
 use super::data::KrateData;
 use super::env::BuildEnv;
 use super::paths::PathMap;

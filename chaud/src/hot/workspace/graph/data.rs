@@ -1,9 +1,13 @@
+use super::flags::KrateFlags;
 use super::info::KrateInfo;
+use crate::hot::util::relaxed::RelaxedBool;
 use core::{fmt, ops};
 
 /// Mutable data / state of a crate.
 pub struct KrateData {
     info: KrateInfo,
+    watched: RelaxedBool,
+    flags: KrateFlags,
 }
 
 impl ops::Deref for KrateData {
@@ -22,6 +26,10 @@ impl fmt::Display for KrateData {
 
 impl KrateData {
     pub(super) fn new(info: KrateInfo) -> Self {
-        Self { info }
+        Self {
+            info,
+            watched: RelaxedBool::new(false),
+            flags: KrateFlags::new(),
+        }
     }
 }

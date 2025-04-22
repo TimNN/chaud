@@ -12,6 +12,7 @@ pub use self::index::*;
 mod data;
 mod def;
 mod env;
+mod flags;
 mod index;
 mod info;
 mod paths;

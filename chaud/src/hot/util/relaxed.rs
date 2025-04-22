@@ -1,0 +1,63 @@
+use core::sync::atomic::Ordering::Relaxed;
+use core::sync::atomic::{AtomicBool, AtomicU8};
+
+/// A wrapper around [`AtomicBool`] that uses [`Relaxed`] for all operations.
+#[repr(transparent)]
+pub struct RelaxedBool {
+    val: AtomicBool,
+}
+
+impl RelaxedBool {
+    #[inline]
+    pub const fn new(val: bool) -> Self {
+        Self { val: AtomicBool::new(val) }
+    }
+
+    #[inline]
+    pub fn load(&self) -> bool {
+        self.val.load(Relaxed)
+    }
+
+    #[inline]
+    pub fn swap(&self, val: bool) -> bool {
+        self.val.swap(val, Relaxed)
+    }
+}
+
+/// A wrapper around [`AtomicU8`] that uses [`Relaxed`] for all operations.
+#[repr(transparent)]
+pub struct RelaxedU8 {
+    val: AtomicU8,
+}
+
+impl RelaxedU8 {
+    #[inline]
+    pub const fn new(val: u8) -> Self {
+        Self { val: AtomicU8::new(val) }
+    }
+
+    #[inline]
+    pub fn load(&self) -> u8 {
+        self.val.load(Relaxed)
+    }
+
+    #[inline]
+    pub fn swap(&self, val: u8) -> u8 {
+        self.val.swap(val, Relaxed)
+    }
+
+    #[inline]
+    pub fn fetch_or(&self, val: u8) -> u8 {
+        self.val.fetch_or(val, Relaxed)
+    }
+
+    #[inline]
+    pub fn fetch_and(&self, val: u8) -> u8 {
+        self.val.fetch_and(val, Relaxed)
+    }
+
+    #[inline]
+    pub fn compare_exchange(&self, current: u8, new: u8) -> Result<u8, u8> {
+        self.val.compare_exchange(current, new, Relaxed, Relaxed)
+    }
+}

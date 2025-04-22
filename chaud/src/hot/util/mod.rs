@@ -13,3 +13,4 @@ pub mod latest;
 pub mod minilog;
 #[cfg(miri)]
 pub mod miri;
+pub mod relaxed;
