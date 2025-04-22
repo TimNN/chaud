@@ -29,5 +29,6 @@ pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
 match_bool = "allow"
 needless_raw_string_hashes = "allow"
+redundant_closure_for_method_calls = "allow"
 single_match_else = "allow"
 unnecessary_debug_formatting = "allow"

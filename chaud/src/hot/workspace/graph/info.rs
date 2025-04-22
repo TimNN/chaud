@@ -45,6 +45,10 @@ impl KrateInfo {
             .with_context(etx!("Failed to build crate info for {}", pkg.name()))
     }
 
+    pub fn pkg(&self) -> &PackageName {
+        &self.pkg
+    }
+
     pub(super) fn idx(&self) -> KrateIdx {
         self.idx
     }
@@ -57,7 +61,7 @@ impl KrateInfo {
         &self.deps
     }
 
-    pub(super) fn dylib_paths(&self) -> Option<&DylibPaths> {
+    pub fn dylib_paths(&self) -> Option<&DylibPaths> {
         self.paths.as_ref()
     }
 
@@ -175,7 +179,7 @@ impl DylibPaths {
         }))
     }
 
-    pub(super) fn dylib_file(&self) -> &Utf8Path {
+    pub fn dylib_file(&self) -> &Utf8Path {
         &self.dylib_file
     }
 

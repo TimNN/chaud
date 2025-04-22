@@ -36,7 +36,7 @@ impl KrateData {
         }
     }
 
-    pub(super) fn dylib(&self) -> Option<DylibIdx> {
+    pub fn dylib(&self) -> Option<DylibIdx> {
         debug_assert_eq!(self.is_dylib(), self.dylib.is_some());
         self.dylib
     }
