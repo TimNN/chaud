@@ -10,6 +10,12 @@ week (though I'll try to reply faster than that).
 
 ## Code Style
 
+Don't worry too much about this section. Anything that is really important
+should be caught by CI, and everything else I'll check during code reviews.
+
+This is documented here so that I can remember what I decided in the past and
+help me stay consistent.
+
 ### Lints
 
 On the latest stable release:
@@ -50,8 +56,7 @@ This is checked by CI.
        `fn foo() { bar() } fn bar() {}`, `foo` should be ordered before `bar`).
 
 - The item ordering is somewhat flexible (and the existing code doesn't
-  necessarily always follow it perfectly). It's documented here mainly so that I
-  have something to refer to, to try and structure things consistently.
+  necessarily always follow it perfectly).
 
 ### Logging
 
@@ -103,3 +108,21 @@ This is checked by CI.
 
 - Module-internal functions do not need to include the full context, as long the
   context is added by later.
+
+### Panics
+
+Avoid panicking. Many common panic sources trigger warnings by Clippy.
+
+- `unwrap(...)` is strictly forbidden, use `expect(...)` instead.
+
+- Other panic sources may be `#[expect]`ed with a `reason` explaining why they
+  cannot happen.
+
+  - This doesn't need to be as formal as a "safety" comment, but should explain
+    why a panic should happen.
+
+- If a function returns a `Result` already, prefer returning an error instead of
+  panicking using `err_*` macros defined in `assert.rs`.
+
+- Using `debug_assert!` is fine to verify assumptions, as long the behavior with
+  debug assertions disabled is reasonable.

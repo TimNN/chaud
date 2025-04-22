@@ -1,6 +1,6 @@
 use super::KrateIdx;
 use super::data::KrateData;
-use crate::hot::util::OrderedTopo;
+use crate::hot::util::{CfgInto as _, OrderedTopo};
 use anyhow::{Context as _, Result};
 use core::ops;
 
@@ -19,6 +19,10 @@ pub struct DylibMap {
 impl ops::Index<DylibIdx> for DylibMap {
     type Output = KrateIdx;
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "Dylib indices are assumed to be valid."
+    )]
     fn index(&self, idx: DylibIdx) -> &Self::Output {
         &self.inner[idx.usize()]
     }
@@ -28,7 +32,7 @@ impl DylibIdx {
     #[inline]
     #[must_use]
     pub fn usize(self) -> usize {
-        self.0.try_into().unwrap()
+        self.0.cfg_into()
     }
 
     pub(super) fn assign(krates: &mut [KrateData]) -> Result<DylibMap> {
@@ -42,6 +46,10 @@ impl DylibMap {
     }
 }
 
+#[expect(
+    clippy::indexing_slicing,
+    reason = "crate indices are assumed to be valid"
+)]
 fn assign_inner(krates: &mut [KrateData]) -> Result<DylibMap> {
     let mut topo = OrderedTopo::new();
 
@@ -60,7 +68,10 @@ fn assign_inner(krates: &mut [KrateData]) -> Result<DylibMap> {
             continue;
         }
 
-        let next = mapping.len().try_into().unwrap();
+        let next = mapping
+            .len()
+            .try_into()
+            .context("Crate idx overflowed `u32`")?;
         krate.assign_dylib_idx(DylibIdx(next));
         mapping.push(idx);
     }

@@ -1,4 +1,5 @@
 use crate::hot::cargo::metadata::{KrateName, Package, PackageName};
+use crate::hot::util::CfgInto as _;
 use anyhow::{Context as _, Result, bail};
 use hashbrown::{HashMap, hash_map};
 
@@ -10,7 +11,7 @@ impl KrateIdx {
     #[inline]
     #[must_use]
     pub fn usize(self) -> usize {
-        self.0.try_into().unwrap()
+        self.0.cfg_into()
     }
 }
 
@@ -52,7 +53,7 @@ impl KrateIndex {
         };
 
         match self.by_krate.entry(krate_name) {
-            hash_map::Entry::Occupied(entry) => bail!("Duplicate package name: {:?}", entry.key()),
+            hash_map::Entry::Occupied(entry) => bail!("Duplicate krate name: {:?}", entry.key()),
             hash_map::Entry::Vacant(entry) => entry.insert(next),
         };
 

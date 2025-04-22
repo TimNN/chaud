@@ -23,6 +23,10 @@ impl PathMap {
         new_inner(krates).context("Failed to build path map")
     }
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "Pattern IDs are assumed to be valid."
+    )]
     #[must_use]
     pub(super) fn lookup(&self, path: &Path) -> PathMapResult {
         let input = Input::new(path.as_os_str().as_encoded_bytes()).anchored(Anchored::Yes);

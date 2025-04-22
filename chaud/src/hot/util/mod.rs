@@ -2,13 +2,16 @@ pub use self::channel::*;
 pub use self::command::*;
 #[expect(unused_imports, reason = "I know this is effectively only pub(crate)")]
 pub use self::etx::*;
+pub use self::into::*;
 pub use self::topo::*;
 
 mod channel;
 mod command;
 mod etx;
+mod into;
 mod topo;
 
+pub mod assert;
 pub mod latest;
 pub mod minilog;
 #[cfg(miri)]

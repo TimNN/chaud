@@ -76,6 +76,16 @@ feature).
 
 ## Safety
 
+## Panics
+
+In _production mode_ Chaud never panics or fails.
+
+In _development mode_ Chaud avoids panicking, and instead disables relevant
+functionality if an unrecoverable error occurs.
+
+There is no guarantee that a panic will never occur, but a panic is considered a
+bug. You can reduce the risk of panics by turning of debug assertions for Chaud.
+
 <!-- readme-license-begin -->
 
 <br>

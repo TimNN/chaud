@@ -5,9 +5,10 @@ use super::env::BuildEnv;
 use super::paths::PathMap;
 use super::{DylibMap, KrateIdx, KrateIndex};
 use crate::hot::cargo::metadata::Metadata;
+use crate::hot::util::assert::err_assert;
 use crate::hot::workspace::graph::DylibIdx;
 use crate::hot::workspace::graph::info::KrateInfo;
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 use core::ops;
 
 pub struct Graph {
@@ -21,6 +22,10 @@ pub struct Graph {
 impl ops::Index<KrateIdx> for Graph {
     type Output = KrateData;
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "crate indices are assumed to be valid"
+    )]
     fn index(&self, idx: KrateIdx) -> &Self::Output {
         &self.krates[idx.usize()]
     }
@@ -29,6 +34,10 @@ impl ops::Index<KrateIdx> for Graph {
 impl ops::Index<DylibIdx> for Graph {
     type Output = KrateData;
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "dylib indices are assumed to be valid"
+    )]
     fn index(&self, idx: DylibIdx) -> &Self::Output {
         &self.krates[self.dylib_map[idx].usize()]
     }
@@ -73,7 +82,7 @@ fn load_krates(meta: &Metadata, env: &BuildEnv, index: &KrateIndex) -> Result<Bo
 
     krates.sort_unstable_by_key(|k| k.idx());
     for (pos, krate) in krates.iter().enumerate() {
-        ensure!(pos == krate.idx().usize());
+        err_assert!(pos == krate.idx().usize());
     }
 
     Ok(krates.into_boxed_slice())

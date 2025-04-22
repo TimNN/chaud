@@ -57,6 +57,7 @@ impl Sym {
 
     #[inline]
     #[must_use]
+    #[expect(clippy::expect_used, reason = "`demangle` ensures this is unreachable")]
     pub fn krate(&self) -> KrateName {
         let krate = self.name.split_once("::").expect("unreachable").0;
         KrateName::borrowed(krate)

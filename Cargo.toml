@@ -15,6 +15,14 @@ self_named_module_files = "warn"
 undocumented_unsafe_blocks = "warn"
 unused_trait_names = "warn"
 
+# See CONTRIBUTING.md#panics.
+expect_used = "warn"
+indexing_slicing = "warn"
+panic = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+unwrap_used = "forbid"
+
 pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
 match_bool = "allow"
