@@ -7,10 +7,12 @@
 //! * Methods should be `pub(super)` until they are needed outside this module.
 
 pub use self::def::*;
+pub use self::dylib::*;
 pub use self::index::*;
 
 mod data;
 mod def;
+mod dylib;
 mod env;
 mod flags;
 mod index;

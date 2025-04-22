@@ -1,3 +1,4 @@
+use super::dylib::DylibIdx;
 use super::flags::KrateFlags;
 use super::info::KrateInfo;
 use crate::hot::util::relaxed::RelaxedBool;
@@ -6,6 +7,7 @@ use core::{fmt, ops};
 /// Mutable data / state of a crate.
 pub struct KrateData {
     info: KrateInfo,
+    dylib: Option<DylibIdx>,
     watched: RelaxedBool,
     flags: KrateFlags,
 }
@@ -28,8 +30,20 @@ impl KrateData {
     pub(super) fn new(info: KrateInfo) -> Self {
         Self {
             info,
+            dylib: None,
             watched: RelaxedBool::new(false),
             flags: KrateFlags::new(),
         }
+    }
+
+    pub(super) fn dylib(&self) -> Option<DylibIdx> {
+        debug_assert_eq!(self.is_dylib(), self.dylib.is_some());
+        self.dylib
+    }
+
+    pub(super) fn assign_dylib_idx(&mut self, dylib: DylibIdx) {
+        debug_assert!(self.dylib.is_none());
+        debug_assert!(self.is_dylib());
+        self.dylib = Some(dylib);
     }
 }
