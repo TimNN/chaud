@@ -1,6 +1,6 @@
 use super::data::KrateData;
 use super::env::BuildEnv;
-use crate::hot::workspace::index::{KrateIdx, KrateIndex};
+use super::{KrateIdx, KrateIndex};
 use core::ops;
 
 pub struct Graph {
