@@ -41,6 +41,14 @@ impl KrateData {
         self.dylib
     }
 
+    pub fn needs_patch(&self) -> bool {
+        self.flags.needs_patch()
+    }
+
+    pub fn mark_patched(&self) {
+        self.flags.mark_patched();
+    }
+
     pub(super) fn assign_dylib_idx(&mut self, dylib: DylibIdx) {
         debug_assert!(self.dylib.is_none());
         debug_assert!(self.is_dylib());

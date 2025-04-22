@@ -44,6 +44,18 @@ impl DylibMap {
     pub(super) fn len(&self) -> usize {
         self.inner.len()
     }
+
+    pub(super) fn indices(&self) -> impl Iterator<Item = DylibIdx> {
+        (0..self.len_u32()).map(DylibIdx)
+    }
+
+    #[expect(
+        clippy::expect_used,
+        reason = "`assign_inner` cannot produce non-u32 len"
+    )]
+    fn len_u32(&self) -> u32 {
+        self.len().try_into().expect("unreachable")
+    }
 }
 
 #[expect(

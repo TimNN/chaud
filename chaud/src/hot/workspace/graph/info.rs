@@ -3,6 +3,7 @@ use super::{KrateIdx, KrateIndex};
 use crate::hot::cargo::metadata::{
     Dependency, DependencyKind, KrateName, Package, PackageName, Target, TargetKind,
 };
+use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
@@ -26,6 +27,7 @@ pub struct KrateInfo {
     idx: KrateIdx,
     pkg: PackageName,
     name: KrateName<'static>,
+    initial_version: String,
     deps: Box<[KrateIdx]>,
     /// Only set if this crate is a `dylib`.
     paths: Option<DylibPaths>,
@@ -47,6 +49,10 @@ impl KrateInfo {
         self.idx
     }
 
+    pub fn initial_version(&self) -> &str {
+        &self.initial_version
+    }
+
     pub(super) fn deps(&self) -> &[KrateIdx] {
         &self.deps
     }
@@ -57,6 +63,14 @@ impl KrateInfo {
 
     pub(super) fn is_dylib(&self) -> bool {
         self.dylib_paths().is_some()
+    }
+
+    #[track_caller]
+    pub fn expect_dylib_paths(&self) -> Result<&DylibPaths> {
+        match self.dylib_paths() {
+            Some(paths) => Ok(paths),
+            None => err_unreachable!(),
+        }
     }
 
     pub(super) fn paths_iter(&self) -> impl Iterator<Item = &Utf8Path> {
@@ -81,11 +95,13 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
         .context("Package not found in the index")?;
     let name = pkg.to_krate();
 
+    let initial_version = package.version().to_owned();
+
     let deps = filter_deps(index, package.dependencies());
 
     let paths = DylibPaths::new(env, package).context("Failed to determine dylib paths")?;
 
-    Ok(KrateInfo { idx, pkg, name, deps, paths })
+    Ok(KrateInfo { idx, pkg, name, initial_version, deps, paths })
 }
 
 fn filter_deps(index: &KrateIndex, deps: &[Dependency]) -> Box<[KrateIdx]> {
@@ -161,6 +177,10 @@ impl DylibPaths {
 
     pub(super) fn dylib_file(&self) -> &Utf8Path {
         &self.dylib_file
+    }
+
+    pub fn manifest_file(&self) -> &Utf8Path {
+        &self.manifest_file
     }
 }
 

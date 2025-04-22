@@ -94,6 +94,9 @@ features = ["elf"]
 [lints]
 workspace = true
 
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+
 [package.metadata.docs.rs]
 all-features = true
 # No need to build multiple targets, the docs are all the same.

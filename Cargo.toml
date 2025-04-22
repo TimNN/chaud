@@ -26,4 +26,5 @@ unwrap_used = "forbid"
 pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
 match_bool = "allow"
+needless_raw_string_hashes = "allow"
 single_match_else = "allow"
