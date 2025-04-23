@@ -10,7 +10,6 @@ pub use self::data::*;
 pub use self::def::*;
 pub use self::dylib::*;
 pub use self::index::*;
-pub use self::info::*;
 
 mod data;
 mod def;

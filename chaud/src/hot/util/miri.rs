@@ -1,5 +1,4 @@
-use crate::hot::util::IgnorePoisonExt;
-use crate::util::unpoision::Mutex;
+use parking_lot::Mutex;
 
 pub trait Leakable: 'static + Send + Sync {}
 

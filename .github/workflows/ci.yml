@@ -1,0 +1,73 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - dev
+  schedule:
+    # Daily, at a semi-randomly chosen time.
+    - cron: "37 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # TODO: Add windows-latest once Windows is supported (MSVC & MinGW?)
+        os: [ubuntu-latest, macos-latest]
+        rust: ["stable", "beta", "nightly"]
+        include:
+          - rust: stable
+            components: clippy, rustfmt
+          - rust: beta
+            components: clippy, rustfmt
+          - rust: nightly
+            components: clippy, miri, rust-src, rustfmt
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: ${{ matrix.components }}
+
+      - name: Check Format
+        run: cargo fmt --all --check
+        continue-on-error: ${{ matrix.rust != 'stable' }}
+
+      - name: Clippy Production Mode
+        run: cargo clippy --workspace -- -D warnings
+        continue-on-error: ${{ matrix.rust != 'stable' }}
+
+      - name: Clippy Development Mode
+        run: cargo clippy --workspace --all-features -- -D warnings
+        continue-on-error: ${{ matrix.rust != 'stable' }}
+
+      - name: Rustdoc
+        run:
+          cargo doc --workspace --all-features --no-deps
+          --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
+        continue-on-error: ${{ matrix.rust != 'stable' }}
+
+      - name: Unit Test Production Mode
+        run: cargo test --workspace
+
+      - name: Unit Test Development Mode
+        run: cargo test --workspace --all-features
+
+      - name: Unit Test Production Mode (Miri)
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo miri test -p chaud
+
+      - name: Unit Test Development Mode (Miri)
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo miri test -p chaud --all-features

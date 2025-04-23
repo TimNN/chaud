@@ -1,5 +1,6 @@
 use crate::hot::cargo::metadata::KrateName;
 use crate::hot::handle::ErasedFnPtr;
+use crate::hot::util::assert::err_assert;
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result, bail, ensure};
 use core::ffi::CStr;
@@ -31,12 +32,13 @@ impl fmt::Debug for Sym {
 
 impl Sym {
     pub fn of(f: ErasedFnPtr) -> Result<Self> {
+        err_assert!(cfg!(not(miri)));
+
         let resolved = resolve(f);
         let resolved = resolved.with_context(etx!("Failed to resolve {f:?})"))?;
 
         // FIXME(https://github.com/rust-lang/rust/issues/134915): Switch to
         // `ByteStr` for formatting `resolved` once stable.
-
         let mut buf = String::new();
         demangle(&mut buf, resolved).with_context(etx!(
             "Failed to demangle {:?}",
@@ -119,5 +121,5 @@ fn demangle(buf: &mut String, mangled: &[u8]) -> Result<()> {
     buf.find("::")
         .with_context(etx!("Could not find crate name separator in {buf:?}"))?;
 
-    todo!();
+    Ok(())
 }

@@ -52,9 +52,9 @@ fn create_erased(f: ErasedFnPtr) -> ErasedHandle {
         if let Some(handle) = by_ptr.get(&f) {
             return *handle;
         }
-
-        todo!();
     }
+
+    create_slow(f)
 }
 
 /// # Guarantees
