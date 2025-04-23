@@ -6,6 +6,12 @@ readme = "README.md"
 license.workspace = true
 repository.workspace = true
 
+description = '''
+A hot-reloading library for Cargo workspaces designed for ease of use.
+'''
+categories = ["hot-reloading"]
+keywords = ["development-tools"]
+
 edition = "2024"
 rust-version = "1.86"
 

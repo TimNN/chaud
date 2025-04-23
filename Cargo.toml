@@ -23,6 +23,8 @@ unimplemented = "warn"
 unreachable = "warn"
 unwrap_used = "forbid"
 
+cargo = { level = "warn", priority = -1 }
+
 pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
 match_bool = "allow"
