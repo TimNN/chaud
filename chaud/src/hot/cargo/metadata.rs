@@ -3,7 +3,7 @@ use anyhow::{Context as _, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
 use core::str::Chars;
-use nanoserde::{DeJson, DeJsonErr, DeJsonState};
+use nanoserde::{DeJson, DeJsonErr, DeJsonState, DeJsonTok};
 use std::borrow::Cow;
 use std::process::{Command, Stdio};
 
@@ -96,9 +96,12 @@ pub enum DependencyKind {
 
 impl DeJson for DependencyKind {
     fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
+        if s.tok == DeJsonTok::Null {
+            s.next_tok(i)?;
+            return Ok(Self::Normal);
+        }
         s.string(i)?;
         match s.strbuf.as_ref() {
-            "normal" => Ok(Self::Normal),
             "build" => Ok(Self::Build),
             _ => Ok(Self::Other),
         }
@@ -171,8 +174,6 @@ fn run_cargo() -> Result<String> {
     log::trace!("Running {cmd:?}");
 
     let output = cmd.stdout_str()?;
-
-    println!("{output}");
 
     Ok(output)
 }

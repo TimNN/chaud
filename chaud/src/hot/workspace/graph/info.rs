@@ -35,7 +35,7 @@ pub struct KrateInfo {
 
 impl fmt::Display for KrateInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "`{}`", self.pkg)
+        write!(f, "{}", self.pkg)
     }
 }
 

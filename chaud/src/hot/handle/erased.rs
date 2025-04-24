@@ -25,7 +25,7 @@ impl PartialEq for ErasedHandle {
 
 impl fmt::Debug for ErasedHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("ErasedFnPtr")
+        f.debug_tuple("ErasedHandle")
             .field(&ptr::from_ref(self.inner))
             .finish()
     }

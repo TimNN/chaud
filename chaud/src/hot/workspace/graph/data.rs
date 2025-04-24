@@ -22,7 +22,7 @@ impl ops::Deref for KrateData {
 
 impl fmt::Display for KrateData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "`{}`", self.info)
+        write!(f, "{}", self.info)
     }
 }
 
