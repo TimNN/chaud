@@ -5,6 +5,7 @@ use core::fmt;
 use core::str::Chars;
 use nanoserde::{DeJson, DeJsonErr, DeJsonState, DeJsonTok};
 use std::borrow::Cow;
+use std::env::consts::{DLL_EXTENSION, DLL_PREFIX};
 use std::process::{Command, Stdio};
 
 #[derive(Debug, DeJson)]
@@ -140,8 +141,16 @@ impl<'a> KrateName<'a> {
         Self(Cow::Borrowed(name))
     }
 
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub fn lib_file_name(&self) -> String {
+        self.lib_file_name_suffix("")
+    }
+
+    pub fn lib_file_name_versioned(&self, version: u32) -> String {
+        self.lib_file_name_suffix(format_args!(".{version}"))
+    }
+
+    fn lib_file_name_suffix(&self, suffix: impl fmt::Display) -> String {
+        format!("{DLL_PREFIX}{}{}.{DLL_EXTENSION}", self.0, suffix)
     }
 }
 

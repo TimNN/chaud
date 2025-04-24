@@ -8,7 +8,6 @@ use crate::hot::util::etx;
 use anyhow::{Context as _, Result, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
-use std::env::consts::{DLL_EXTENSION, DLL_PREFIX};
 
 pub struct DylibPaths {
     manifest_file: Utf8PathBuf,
@@ -51,6 +50,10 @@ impl KrateInfo {
 
     pub(super) fn idx(&self) -> KrateIdx {
         self.idx
+    }
+
+    pub fn name(&self) -> &KrateName<'static> {
+        &self.name
     }
 
     pub fn initial_version(&self) -> &str {
@@ -165,10 +168,7 @@ impl DylibPaths {
             }
         }
 
-        let dylib_file = env.lib_dir().join(format!(
-            "{DLL_PREFIX}{}.{DLL_EXTENSION}",
-            pkg.name().to_krate().as_str()
-        ));
+        let dylib_file = env.lib_dir().join(pkg.name().to_krate().lib_file_name());
 
         Ok(Some(Self {
             manifest_file,

@@ -48,6 +48,10 @@ impl Graph {
         new_inner().context("Failed to load crate graph")
     }
 
+    pub fn env(&self) -> &BuildEnv {
+        &self.env
+    }
+
     pub fn dylibs(&self) -> impl Iterator<Item = &KrateData> {
         self.dylib_map.indices().map(|i| &self[i])
     }

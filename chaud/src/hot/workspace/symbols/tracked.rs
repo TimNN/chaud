@@ -1,6 +1,6 @@
 use crate::hot::handle::{ErasedFnPtr, ErasedHandle};
+use jiff::Timestamp;
 use std::ffi::CString;
-use std::time::SystemTime;
 
 enum State {
     Active,
@@ -10,6 +10,6 @@ enum State {
 
 pub struct TrackedSymbol {
     handle: ErasedHandle,
-    mtime: SystemTime,
+    mtime: Timestamp,
     state: State,
 }

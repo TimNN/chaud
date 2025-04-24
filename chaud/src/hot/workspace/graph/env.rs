@@ -15,7 +15,7 @@ impl BuildEnv {
         new_inner(meta).context("Failed to load build env")
     }
 
-    pub(super) fn lib_dir(&self) -> &Utf8Path {
+    pub fn lib_dir(&self) -> &Utf8Path {
         &self.lib_dir
     }
 }

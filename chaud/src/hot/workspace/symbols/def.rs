@@ -4,6 +4,7 @@ use super::DylibData;
 use crate::hot::util::assert::err_assert;
 use crate::hot::workspace::graph::{DylibIdx, Graph};
 use anyhow::{Context as _, Result};
+use camino::Utf8Path;
 use core::ops;
 use parking_lot::Mutex;
 
@@ -13,6 +14,7 @@ pub struct Symbols {
 
 pub(super) struct SymbolsInner {
     dylibs: Box<[DylibData]>,
+    lib_dir: &'static Utf8Path,
 }
 
 impl ops::Index<DylibIdx> for SymbolsInner {
@@ -41,6 +43,14 @@ impl Symbols {
     pub fn new(graph: &'static Graph) -> Result<&'static Symbols> {
         new_inner(graph).context("Failed to initialize symbol tracker")
     }
+
+    pub fn copy_libs(&self) -> Result<()> {
+        let inner = &mut *self.inner.lock();
+        for d in &mut inner.dylibs {
+            d.maybe_copy(inner.lib_dir)?;
+        }
+        Ok(())
+    }
 }
 
 fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
@@ -55,7 +65,9 @@ fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
         err_assert!(pos == dylib.idx().usize());
     }
 
+    let lib_dir = graph.env().lib_dir();
+
     Ok(Box::leak(Box::new(Symbols {
-        inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice() }),
+        inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice(), lib_dir }),
     })))
 }
