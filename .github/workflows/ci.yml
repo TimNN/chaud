@@ -18,20 +18,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Add windows-latest once Windows is supported (MSVC & MinGW?)
-        os: [ubuntu-latest, macos-latest]
+        host: [macos, linux, windows-msvc, windows-gnu]
         rust: ["stable", "beta", "nightly"]
         include:
+          # host -> OS mappings
+          - host: macos
+            os: macos-latest
+          - host: linux
+            os: ubuntu-latest
+          - host: windows-msvc
+            os: windows-latest
+          - host: windows-gnu
+            os: windows-latest
+
+          # toolchain suffix
+          - host: windows-gnu
+            rust-suffix: -x86_64-pc-windows-gnu
+
+          # rust channel config
           - rust: stable
             components: clippy, rustfmt
           - rust: beta
             components: clippy, rustfmt
             # FIXME: Move this to `Cargo.toml` once it reaches stable.
-            lints: -Aclippy::unnecessary_debug_formatting
+            lints: '"-Aclippy::unnecessary_debug_formatting"'
           - rust: nightly
             components: clippy, miri, rust-src, rustfmt
             # FIXME: Move this to `Cargo.toml` once it reaches stable.
-            lints: -Aclippy::unnecessary_debug_formatting
+            lints: '"-Aclippy::unnecessary_debug_formatting"'
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -39,22 +54,20 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}${{ matrix.rust-suffix }}
           components: ${{ matrix.components }}
 
       - name: Check Format
+        if: ${{ matrix.rust == 'stable' }}
         run: cargo fmt --all --check
-        continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Clippy Production Mode
         run: cargo clippy --workspace -- -D warnings ${{ matrix.lints }}
-        continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Clippy Development Mode
         run:
           cargo clippy --workspace --all-features -- -D warnings ${{
           matrix.lints }}
-        continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Rustdoc
         run:
