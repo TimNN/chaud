@@ -34,7 +34,7 @@
 //! requirements:
 //!
 //! 1) The **actual** type of the stored value must **never** change, and always
-//!    be a function pointer implementing [`FnPtrBounds`][crate::FnPtrBounds].
+//!    be a function pointer implementing [`FnPtr`][crate::FnPtr].
 //!    * This implies that stored values are always non-null.
 //!
 //! 2) With the exception of [`AtomicFnPtr`], the stored **value** must never

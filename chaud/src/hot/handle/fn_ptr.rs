@@ -1,4 +1,4 @@
-use crate::FnPtrBounds;
+use crate::FnPtr;
 use core::ffi::c_void;
 use core::ptr::NonNull;
 use core::{fmt, mem, ptr};
@@ -16,11 +16,11 @@ pub struct ErasedFnPtr {
     ///
     /// * Must never change.
     /// * The actual type must be a function pointer implementing
-    ///   [`FnPtrBounds`].
+    ///   [`FnPtr`].
     inner: NonNull<ErasedFnPtrPointee>,
 }
 
-// SAFETY: The actual type must imlement `FnPtrBounds`, which requires `Send`.
+// SAFETY: The actual type must imlement `FnPtr`, which requires `Send`.
 unsafe impl Send for ErasedFnPtr {}
 
 // SAFETY: `ErasedFnPtr` is send and does not allow mutating access.
@@ -39,15 +39,12 @@ impl fmt::Debug for ErasedFnPtr {
 }
 
 impl ErasedFnPtr {
-    /// # Safety
-    ///
-    /// `F` must be a function pointer.
     #[inline]
     #[must_use]
-    pub unsafe fn erase<F: FnPtrBounds>(f: F) -> Self {
-        // SAFETY: The caller must ensure that `F` is a function pointer (and
-        // thus non-null). Aside from that, transmutes from function pointers
-        // to pointers are valid.
+    pub fn erase<F: FnPtr>(f: F) -> Self {
+        // SAFETY: `FnPtr` guarantees that `F` is a function pointer (and thus
+        // non-null). Aside from that, transmutes from function pointers to
+        // pointers are valid.
         let inner = unsafe { transmute_copy_layout_checked::<F, NonNull<ErasedFnPtrPointee>>(f) };
 
         // SAFETY: Initializing does not count as a change, and the actual type
@@ -57,8 +54,8 @@ impl ErasedFnPtr {
 
     /// # Safety
     ///
-    /// The passed argument must be a function pointer implementing
-    /// [`FnPtrBounds`] (and thus non-null).
+    /// The passed argument must be a function pointer implementing [`FnPtr`]
+    /// (and thus non-null).
     #[inline]
     #[must_use]
     pub(super) unsafe fn from_raw_never_null(raw: RawErasedFnPtr) -> Self {
@@ -73,7 +70,7 @@ impl ErasedFnPtr {
     /// # Safety
     ///
     /// The passed argument must either be `null`, or a function pointer
-    /// implementing [`FnPtrBounds`].
+    /// implementing [`FnPtr`].
     #[inline]
     #[must_use]
     pub(super) unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
@@ -97,7 +94,7 @@ impl ErasedFnPtr {
     /// `F` must be the actual type of `self`.
     #[inline]
     #[must_use]
-    pub(super) unsafe fn typed<F: FnPtrBounds>(self) -> F {
+    pub(super) unsafe fn typed<F: FnPtr>(self) -> F {
         // SAFETY: The caller must ensure that `F` is the actual type of `self`,
         // thus transmuting the pointer back to a F (which must be a function
         // pointer) is valid.

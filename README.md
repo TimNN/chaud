@@ -12,12 +12,12 @@ _Chaud_ (French for "hot") is a hot-reloading library for Cargo workspaces
 designed for ease of use.
 
 ```rust
-use chaud::Handle;
+use chaud::handle;
 
 fn main() {
     // Create a handle to a function defined in some other crate
     // in the workspace.
-    let handle = Handle::create0(some_other_crate::do_something);
+    let handle = handle!(some_other_crate::do_something);
 
     loop {
         // Retrieve the latest version of the handle, and call it.

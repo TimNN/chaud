@@ -26,8 +26,12 @@ jobs:
             components: clippy, rustfmt
           - rust: beta
             components: clippy, rustfmt
+            # FIXME: Move this to `Cargo.toml` once it reaches stable.
+            lints: -Aclippy::unnecessary_debug_formatting
           - rust: nightly
             components: clippy, miri, rust-src, rustfmt
+            # FIXME: Move this to `Cargo.toml` once it reaches stable.
+            lints: -Aclippy::unnecessary_debug_formatting
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -43,11 +47,13 @@ jobs:
         continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Clippy Production Mode
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace -- -D warnings ${{ matrix.lints }}
         continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Clippy Development Mode
-        run: cargo clippy --workspace --all-features -- -D warnings
+        run:
+          cargo clippy --workspace --all-features -- -D warnings ${{
+          matrix.lints }}
         continue-on-error: ${{ matrix.rust != 'stable' }}
 
       - name: Rustdoc

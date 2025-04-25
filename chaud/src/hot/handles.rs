@@ -3,7 +3,7 @@ use super::dylib::Sym;
 use super::handle::{ErasedFnPtr, ErasedHandle};
 use super::registry::Registry;
 use super::util::minilog;
-use crate::FnPtrBounds;
+use crate::FnPtr;
 use foldhash::fast::FixedState;
 use hashbrown::hash_map;
 use parking_lot::{Mutex, RwLock};
@@ -26,15 +26,11 @@ static HANDLES: Handles = Handles {
     registry: Mutex::new(Registry::new()),
 };
 
-/// # Safety
-///
-/// `F` must be a function pointer.
 #[inline]
-pub unsafe fn create_handle<F: FnPtrBounds>(f: F) -> TypedHandle<F> {
-    // SAFETY: The caller must ensure that `F` is a function pointer.
-    let erased = unsafe { ErasedFnPtr::erase(f) };
+pub fn create_handle<F: FnPtr>(sym: &'static str, f: F) -> TypedHandle<F> {
+    let erased = ErasedFnPtr::erase(f);
 
-    let handle = create_erased(erased);
+    let handle = create_erased(sym, erased);
 
     // SAFETY: `create_erased` guaranteed that `handle` has the same actual type
     // as `erased`, which is `F`.
@@ -45,7 +41,7 @@ pub unsafe fn create_handle<F: FnPtrBounds>(f: F) -> TypedHandle<F> {
 ///
 /// That the returned value has the same actual type as `f`.
 #[inline]
-fn create_erased(f: ErasedFnPtr) -> ErasedHandle {
+fn create_erased(sym: &'static str, f: ErasedFnPtr) -> ErasedHandle {
     {
         let by_ptr = HANDLES.by_ptr.read();
 
@@ -54,35 +50,38 @@ fn create_erased(f: ErasedFnPtr) -> ErasedHandle {
         }
     }
 
-    create_slow(f)
+    create_slow(sym, f)
 }
 
 /// # Guarantees
 ///
 /// That the returned value has the same actual type as `f`.
 #[cold]
-fn create_slow(f: ErasedFnPtr) -> ErasedHandle {
+fn create_slow(sym: &'static str, f: ErasedFnPtr) -> ErasedHandle {
     minilog::init_once();
 
-    let h = lookup_or_create_sym(f);
+    let h = lookup_or_create_sym(sym, f);
     insert_by_ptr(f, h);
     h
 }
 
-fn lookup_or_create_sym(f: ErasedFnPtr) -> ErasedHandle {
-    let sym = match Sym::of(f) {
+/// # Guarantees
+///
+/// That the returned value has the same actual type as `f`.
+fn lookup_or_create_sym(sym: &'static str, f: ErasedFnPtr) -> ErasedHandle {
+    let sym = match Sym::new(sym) {
         Ok(sym) => sym,
         Err(e) => {
-            log::error!("Symbol lookup failed, hot reloading will not work: {e:#}");
+            log::error!("Invalid symbol, hot reloading will not work: {e:#}");
             // Create fallback handle.
             return ErasedHandle::new(f);
         }
     };
 
-    match insert_or_get_by_sym(&sym, f) {
+    match insert_or_get_by_sym(sym, f) {
         SymResult::Created(h) => {
             // Avoid the hot-reloading infrastructure in unit tests.
-            if !cfg!(test) {
+            if !cfg!(any(test, miri)) {
                 HANDLES.registry.lock().register(sym, h);
             }
             h
@@ -112,11 +111,19 @@ enum SymResult {
     Found(ErasedHandle),
 }
 
-fn insert_or_get_by_sym(sym: &Sym, f: ErasedFnPtr) -> SymResult {
+/// # Guarantees
+///
+/// That the returned value (if any) has the same actual type as `f`.
+fn insert_or_get_by_sym(sym: Sym, f: ErasedFnPtr) -> SymResult {
     let mut by_sym = HANDLES.by_sym.lock();
 
-    match by_sym.entry_ref(sym) {
-        hash_map::EntryRef::Occupied(entry) => SymResult::Found(*entry.get()),
+    match by_sym.entry_ref(&sym) {
+        hash_map::EntryRef::Occupied(entry) => {
+            // SAFETY: This assumes that a specific symbol always corresponds
+            // to exactly one actual type. Violating this assumption is covered
+            // under the `unsafe-hot-reload` feature opt-in.
+            SymResult::Found(*entry.get())
+        }
         hash_map::EntryRef::Vacant(entry) => {
             let h = ErasedHandle::new(f);
             log::debug!("Registering handle for {:?}: {h:?}", entry.key());

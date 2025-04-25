@@ -1,10 +1,10 @@
 use super::ErasedHandle;
-use crate::FnPtrBounds;
+use crate::FnPtr;
 use core::marker::PhantomData;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-pub struct TypedHandle<F: FnPtrBounds> {
+pub struct TypedHandle<F: FnPtr> {
     _pd: PhantomData<F>,
     /// # Safety
     ///
@@ -15,7 +15,7 @@ pub struct TypedHandle<F: FnPtrBounds> {
     inner: ErasedHandle,
 }
 
-impl<F: FnPtrBounds> TypedHandle<F> {
+impl<F: FnPtr> TypedHandle<F> {
     /// # Safety
     ///
     /// The passed argument's actual type must be `F`.

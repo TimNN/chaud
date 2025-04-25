@@ -17,11 +17,6 @@ rust-version = "1.86"
 
 [features]
 
-# Enable `Handle::create*` for `unsafe` functions.
-create-unsafe = []
-# Enable `Handle::create*` for `extern` functions.
-create-extern = []
-
 # Do not print a warning to stderr if logging is disabled for Chaud.
 #
 # See https://docs.rs/chaud#logging
@@ -37,7 +32,6 @@ unsafe-hot-reload = [
     "dep:foldhash",
     "dep:jiff",
     "dep:hashbrown",
-    "dep:libc",
     "dep:log",
     "dep:nanoserde",
     "dep:notify",
@@ -54,7 +48,6 @@ aho-corasick = { version = "1.1.3", optional = true }
 anyhow = { version = "1.0.98", optional = true }
 camino = { version = "1.1.9", optional = true }
 foldhash = { version = "0.1.5", optional = true }
-libc = { version = "0.2.172", optional = true }
 log = { version = "0.4.27", optional = true }
 notify = { version = "8.0.0", optional = true }
 parking_lot = { version = "0.12.3", optional = true }

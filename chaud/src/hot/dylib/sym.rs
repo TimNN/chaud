@@ -1,35 +1,13 @@
 use crate::hot::cargo::metadata::KrateName;
-use crate::hot::handle::ErasedFnPtr;
-use crate::hot::util::assert::err_assert;
 use crate::hot::util::etx;
-use anyhow::{Context as _, Result, bail, ensure};
-use core::ffi::CStr;
+use anyhow::{Context as _, Result, bail};
 use core::fmt::Write as _;
-use core::{fmt, ptr, str};
+use core::{fmt, str};
 use hashbrown::Equivalent;
 use rustc_demangle::try_demangle;
 
 /// A (demangled) symbol.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Sym {
-    /// The demangled symbol name.
-    ///
-    /// Guaranteed to contain at least one path separator ("::").
-    name: Box<str>,
-}
-
-impl From<&Sym> for Sym {
-    #[inline]
-    fn from(value: &Sym) -> Self {
-        value.clone()
-    }
-}
-
-impl fmt::Debug for Sym {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Sym").field(&self.name).finish()
-    }
-}
+pub type Sym = SymRef<'static>;
 
 /// A (demangled) symbol reference.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -40,94 +18,40 @@ pub struct SymRef<'a> {
     name: &'a str,
 }
 
+impl<'a> From<&SymRef<'a>> for SymRef<'a> {
+    #[inline]
+    fn from(value: &SymRef<'a>) -> Self {
+        *value
+    }
+}
+
 impl fmt::Debug for SymRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("SymRef").field(&self.name).finish()
+        f.debug_tuple("Sym").field(&self.name).finish()
     }
 }
 
-impl Equivalent<Sym> for SymRef<'_> {
-    fn equivalent(&self, key: &Sym) -> bool {
-        self.name == &*key.name
+impl<'a> SymRef<'a> {
+    pub fn new(name: &'a str) -> Result<Self> {
+        name.find("::")
+            .with_context(etx!("Could not find crate name separator in {name:?}"))?;
+
+        Ok(Self { name })
+    }
+
+    pub fn key(self) -> SymRefKey<'a> {
+        SymRefKey(self)
     }
 }
 
-impl Sym {
-    pub fn of(f: ErasedFnPtr) -> Result<Self> {
-        err_assert!(cfg!(not(miri)));
-
-        let resolved = resolve(f);
-        let resolved = resolved.with_context(etx!("Failed to resolve {f:?})"))?;
-
-        // FIXME(https://github.com/rust-lang/rust/issues/134915): Switch to
-        // `ByteStr` for formatting `resolved` once stable.
-        let mut buf = String::new();
-        demangle(&mut buf, resolved).with_context(etx!(
-            "Failed to demangle {:?}",
-            String::from_utf8_lossy(resolved)
-        ))?;
-
-        let sym = Self { name: buf.into() };
-
-        // FIXME(https://github.com/rust-lang/rust/issues/134915): Switch to
-        // `ByteStr` for formatting `resolved` once stable.
-        log::debug!(
-            "Resolved {f:?} to {sym:?} ({:?})",
-            String::from_utf8_lossy(resolved)
-        );
-
-        Ok(sym)
-    }
-
+impl<'a> SymRef<'a> {
     #[inline]
     #[must_use]
     #[expect(clippy::expect_used, reason = "`demangle` ensures this is unreachable")]
-    pub fn krate(&self) -> KrateName {
+    pub fn krate(&self) -> KrateName<'a> {
         let krate = self.name.split_once("::").expect("unreachable").0;
         KrateName::borrowed(krate)
     }
-}
-
-fn resolve(f: ErasedFnPtr) -> Result<&'static [u8]> {
-    let mut info = libc::Dl_info {
-        dli_fname: ptr::null(),
-        dli_fbase: ptr::null_mut(),
-        dli_sname: ptr::null(),
-        dli_saddr: ptr::null_mut(),
-    };
-
-    // SAFETY: `dladdr` does not document any preconditions. `info` being
-    // valid is implied, which is the case here.
-    let res = unsafe { libc::dladdr(f.raw(), &mut info) };
-
-    ensure!(res != 0, "`dladdr` returned 0");
-
-    ensure!(!info.dli_saddr.is_null(), "`dladdr` did not find a symbol");
-
-    ensure!(
-        !info.dli_sname.is_null(),
-        "`dladdr` did not find a symbol name"
-    );
-
-    // SAFETY: If `dladdr` did not return an error, and the name is not null
-    // (checked above), it is assumed to be a valid C string.
-    //
-    // It is unclear how long the data returned by `dladdr` is valid. According
-    // to <https://stackoverflow.com/a/64160509> "until the object is unloaded
-    // via `dlclose`". We already assume that `f` (a function pointer) is valid
-    // for `'static` (thus that the underlying object is never unloaded). So
-    // we might as well assume that the symbol name is valid for `'static`. Any
-    // uncertainty here is covered by the `unsafe-hot-reload` feature opt-in.
-    let name = unsafe { CStr::from_ptr::<'static>(info.dli_sname) };
-
-    ensure!(
-        f == info.dli_saddr,
-        "Address of the provided pointer does not match the address found by \
-            `dladdr` ({:?} for {name:?})",
-        info.dli_saddr
-    );
-
-    Ok(name.to_bytes())
 }
 
 pub(super) fn demangle<'a>(buf: &'a mut String, mangled: &[u8]) -> Result<SymRef<'a>> {
@@ -140,8 +64,14 @@ pub(super) fn demangle<'a>(buf: &'a mut String, mangled: &[u8]) -> Result<SymRef
     buf.clear();
     write!(buf, "{demangled:#}").context("Formatting demangled symbol failed")?;
 
-    buf.find("::")
-        .with_context(etx!("Could not find crate name separator in {buf:?}"))?;
-
     Ok(SymRef { name: &*buf })
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SymRefKey<'a>(SymRef<'a>);
+
+impl<'a> Equivalent<SymRef<'a>> for SymRefKey<'_> {
+    fn equivalent(&self, key: &SymRef<'a>) -> bool {
+        self.0 == *key
+    }
 }

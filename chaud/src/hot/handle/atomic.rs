@@ -9,7 +9,7 @@ pub struct AtomicFnPtr {
     ///
     /// * The actual type must never change.
     /// * The actual type must be a function pointer implementing
-    ///   [`crate::FnPtrBounds`].
+    ///   [`crate::FnPtr`].
     inner: AtomicPtr<ErasedFnPtrPointee>,
 }
 
@@ -38,7 +38,7 @@ impl AtomicFnPtr {
         let inner = self.inner.load(Relaxed);
 
         // SAFETY: The actual type stored is a function pointer implementing
-        // [`FnPtrBounds`].
+        // `FnPtr`.
         unsafe { ErasedFnPtr::from_raw_never_null(inner) }
     }
 }

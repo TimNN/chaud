@@ -110,7 +110,7 @@ fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
     }
 
     exported_symbols(path, |sym, mangled| {
-        if let Some(t) = d.tracked.get_mut(&sym) {
+        if let Some(t) = d.tracked.get_mut(&sym.key()) {
             t.mangled(d.mtime, mangled)?;
         }
 
