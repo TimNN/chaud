@@ -16,7 +16,7 @@ static DOCTEST_HEADER: &str = r"
 # mod some_other_crate {
 #   pub fn do_something() -> u32 { 42 }
 # }
-";
+#";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut readme = fs::read_to_string("README.md")?;

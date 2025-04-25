@@ -15,13 +15,14 @@ mod hot;
 #[expect(private_bounds, reason = "sealed")]
 pub trait FnPtr: func::Sealed + Copy + Send + Sized + 'static {}
 
-/// A trait implemented for [`Fn`]s. `Ptr` is the corresponding function pointer
-/// type.
+/// A trait implemented for [`Fn`]s.
+///
+/// `Ptr` is the corresponding function pointer type.
 #[expect(private_bounds, reason = "sealed")]
 pub trait Func<Ptr: FnPtr>: func::Sealed<Ptr> {}
 
-/// Provides access to a function pointer whose definition may change at runtime
-/// if hot-reloading is enabled.
+/// Provides access to a function pointer whose definition may change at
+/// runtime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct Handle<F: FnPtr> {
@@ -39,9 +40,15 @@ impl<F: FnPtr> Handle<F> {
     /// If you call this method manually, pass the same expression for both
     /// parameters. The expression should be a [function item][fn-item].
     ///
+    /// Hot-reloading will only work if the function item is defined in a
+    /// library crate that has the `"dylib"` [`crate-type`] configured.
+    /// Hot-reloading is unlikely to work if the function item includes any
+    /// generic const or type parameters.
+    ///
     /// ```
     /// # use chaud::Handle;
     /// #
+    /// // In real code, `do_some_math` would be defined in a different crate.
     /// fn do_some_math(a: u32, b: u32) -> u32 { a + b }
     ///
     /// let handle = Handle::new(do_some_math, do_some_math);
@@ -85,6 +92,7 @@ impl<F: FnPtr> Handle<F> {
     /// [allocation error handling][std::alloc::handle_alloc_error] applies.
     ///
     /// [fn-item]: https://doc.rust-lang.org/reference/types/function-item.html
+    /// [`crate-type`]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-crate-type-field
     #[inline]
     pub fn new<Item: Func<F>>(_: Item, f: F) -> Self {
         #[cfg(not(feature = "unsafe-hot-reload"))]
@@ -142,9 +150,15 @@ impl<F: FnPtr> Handle<F> {
 ///
 /// The argument passed to this macro should be a [function item].
 ///
+/// Hot-reloading will only work if the function item is defined in a library
+/// crate that has the `"dylib"` [`crate-type`] configured. Hot-reloading is
+/// unlikely to work if the function item includes any generic const or type
+/// parameters.
+///
 /// ```
 /// # use chaud::handle;
 /// #
+/// // In real code, `do_some_math` would be defined in a different crate.
 /// fn do_some_math(a: u32, b: u32) -> u32 { a + b }
 ///
 /// let handle = handle!(do_some_math);
@@ -153,6 +167,7 @@ impl<F: FnPtr> Handle<F> {
 /// See [`Handle::new`] for further details.
 ///
 /// [function item]: https://doc.rust-lang.org/reference/types/function-item.html
+/// [`crate-type`]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-crate-type-field
 #[macro_export]
 macro_rules! handle {
     ($f:expr) => {
