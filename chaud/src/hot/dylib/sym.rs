@@ -52,6 +52,19 @@ impl<'a> SymRef<'a> {
         let krate = self.name.split_once("::").expect("unreachable").0;
         KrateName::borrowed(krate)
     }
+
+    pub fn check_syntax(self) {
+        fn valid_demangled_char(c: char) -> bool {
+            c.is_ascii_alphanumeric() || c == ':' || c == '_'
+        }
+
+        if self.name.chars().any(|c| !valid_demangled_char(c)) {
+            log::warn!(
+                "{self:?} contains unexpected characters. Hot reloading may \
+                    not work correctly."
+            );
+        }
+    }
 }
 
 pub(super) fn demangle<'a>(buf: &'a mut String, mangled: &[u8]) -> Result<SymRef<'a>> {

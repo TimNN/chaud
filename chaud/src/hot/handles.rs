@@ -125,8 +125,10 @@ fn insert_or_get_by_sym(sym: Sym, f: ErasedFnPtr) -> SymResult {
             SymResult::Found(*entry.get())
         }
         hash_map::EntryRef::Vacant(entry) => {
+            sym.check_syntax();
+
             let h = ErasedHandle::new(f);
-            log::debug!("Registering handle for {:?}: {h:?}", entry.key());
+            log::debug!("Registering handle for {sym:?}: {h:?}");
             entry.insert(h);
             SymResult::Created(h)
         }
