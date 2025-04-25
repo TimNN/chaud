@@ -3,10 +3,13 @@
 <!-- Parts of this README are based on https://github.com/dtolnay's setup. -->
 <!-- Badge colors were picked from https://uchu.style/. -->
 
+<!-- TODO: Updated URLs after publishing. -->
+
 [<img alt="github" src="https://img.shields.io/badge/github-timnn/chaud-afecb6?style=for-the-badge&logo=github" height="20">](https://github.com/dtolnay/anyhow)
 [<img alt="crates.io" src="https://img.shields.io/crates/v/regex?style=for-the-badge&logo=rust&color=3984f2" height="20">](https://crates.io/crates/chaud)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-chaud-c7abe9?style=for-the-badge&logo=docs.rs" height="20">](https://docs.rs/chaud)
-<img alt="license" src="https://img.shields.io/crates/l/regex?style=for-the-badge&logo=docs.rs&color=e3e5e5" height="20">
+<img alt="license" src="https://img.shields.io/crates/l/regex?style=for-the-badge&color=e3e5e5" height="20">
+[<img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rust-lang/regex/ci.yml?style=for-the-badge" height="20">](https://github.com/TimNN/chaud/actions/workflows/ci.yml)
 
 _Chaud_ (French for "hot") is a hot-reloading library for Cargo workspaces
 designed for ease of use.
@@ -84,7 +87,8 @@ In _development mode_ Chaud avoids panicking, and instead disables relevant
 functionality if an unrecoverable error occurs.
 
 There is no guarantee that a panic will never occur, but a panic is considered a
-bug. You can reduce the risk of panics by turning of debug assertions for Chaud.
+bug. You can reduce the risk of panics by turning off debug assertions for
+Chaud.
 
 <!-- readme-license-begin -->
 
