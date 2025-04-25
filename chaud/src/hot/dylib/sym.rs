@@ -6,9 +6,10 @@ use anyhow::{Context as _, Result, bail, ensure};
 use core::ffi::CStr;
 use core::fmt::Write as _;
 use core::{fmt, ptr, str};
+use hashbrown::Equivalent;
 use rustc_demangle::try_demangle;
 
-/// A (demangled) symbol
+/// A (demangled) symbol.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Sym {
     /// The demangled symbol name.
@@ -27,6 +28,27 @@ impl From<&Sym> for Sym {
 impl fmt::Debug for Sym {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Sym").field(&self.name).finish()
+    }
+}
+
+/// A (demangled) symbol reference.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SymRef<'a> {
+    /// The demangled symbol name.
+    ///
+    /// Guaranteed to contain at least one path separator ("::").
+    name: &'a str,
+}
+
+impl fmt::Debug for SymRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("SymRef").field(&self.name).finish()
+    }
+}
+
+impl Equivalent<Sym> for SymRef<'_> {
+    fn equivalent(&self, key: &Sym) -> bool {
+        self.name == &*key.name
     }
 }
 
@@ -108,7 +130,7 @@ fn resolve(f: ErasedFnPtr) -> Result<&'static [u8]> {
     Ok(name.to_bytes())
 }
 
-fn demangle(buf: &mut String, mangled: &[u8]) -> Result<()> {
+pub(super) fn demangle<'a>(buf: &'a mut String, mangled: &[u8]) -> Result<SymRef<'a>> {
     let mangled = str::from_utf8(mangled)?;
 
     let Ok(demangled) = try_demangle(mangled) else {
@@ -121,5 +143,5 @@ fn demangle(buf: &mut String, mangled: &[u8]) -> Result<()> {
     buf.find("::")
         .with_context(etx!("Could not find crate name separator in {buf:?}"))?;
 
-    Ok(())
+    Ok(SymRef { name: &*buf })
 }

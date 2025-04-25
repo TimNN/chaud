@@ -136,6 +136,12 @@ impl DeJson for KrateName<'_> {
     }
 }
 
+impl fmt::Display for KrateName<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "`{}`", self.0)
+    }
+}
+
 impl<'a> KrateName<'a> {
     pub fn borrowed(name: &'a str) -> KrateName<'a> {
         Self(Cow::Borrowed(name))

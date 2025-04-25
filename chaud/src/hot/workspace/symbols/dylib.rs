@@ -1,19 +1,21 @@
 use super::TrackedSymbol;
 use crate::hot::cargo::metadata::KrateName;
-use crate::hot::dylib::Sym;
+use crate::hot::dylib::{Sym, exported_symbols};
 use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
 use crate::hot::workspace::graph::{DylibIdx, KrateData};
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
+use core::fmt;
 use hashbrown::HashMap;
 use jiff::Timestamp;
 use std::fs;
 
 enum State {
     Initial,
+    Error,
     Copied(Utf8PathBuf),
-    Loaded,
+    Loaded(Utf8PathBuf),
 }
 
 pub struct DylibData {
@@ -26,9 +28,15 @@ pub struct DylibData {
     tracked: HashMap<Sym, TrackedSymbol>,
 }
 
+impl fmt::Display for DylibData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 impl DylibData {
     pub(super) fn new(krate: &'static KrateData) -> Result<Self> {
-        new_inner(krate).with_context(etx!("Failed to int dylib data for {}", krate.pkg()))
+        new_inner(krate).with_context(etx!("Failed to init dylib data for {}", krate.pkg()))
     }
 
     pub(super) fn idx(&self) -> DylibIdx {
@@ -36,7 +44,17 @@ impl DylibData {
     }
 
     pub(super) fn maybe_copy(&mut self, lib_dir: &Utf8Path) -> Result<()> {
-        maybe_copy_inner(self, lib_dir).with_context(etx!("Failed to copy {:?}", self.file))
+        let res = maybe_copy_inner(self, lib_dir);
+
+        if res.is_err() {
+            self.state = State::Error;
+        }
+
+        res.with_context(etx!("Failed to copy dylib for {self}"))
+    }
+
+    pub(super) fn resolve_symbols(&mut self) -> Result<()> {
+        resolve_symbols_inner(self).with_context(etx!("Failed to resolve symbols for {self}"))
     }
 }
 
@@ -52,7 +70,7 @@ fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
     let file = paths.dylib_file();
     let mtime = dylib_mtime(file)?;
 
-    log::trace!("Initialized {idx:?} with mtime {mtime:?} from {file:?}");
+    log::trace!("Initialized {name} with mtime {mtime:?} from {file:?}");
 
     Ok(DylibData {
         idx,
@@ -76,7 +94,32 @@ fn maybe_copy_inner(d: &mut DylibData, lib_dir: &Utf8Path) -> Result<()> {
     fs::copy(d.file, &dst)?;
     d.next = d.next.checked_add(1).context("Dylib version overflow")?;
 
+    log::trace!("Copied dylib for {d} with mtime {mtime:?} to {dst:?}");
+
+    d.mtime = mtime;
     d.state = State::Copied(dst);
+
+    Ok(())
+}
+
+fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
+    let path = d.state.copied_path()?;
+
+    if !d.tracked.values().any(|t| t.mtime() != d.mtime) {
+        return Ok(());
+    }
+
+    exported_symbols(path, |sym, mangled| {
+        if let Some(t) = d.tracked.get_mut(&sym) {
+            t.mangled(d.mtime, mangled)?;
+        }
+
+        Ok(())
+    })?;
+
+    for (k, v) in &d.tracked {
+        ensure!(v.mtime() == d.mtime, "Symbol not resolved: {k:?}");
+    }
 
     Ok(())
 }
@@ -94,4 +137,14 @@ fn dylib_mtime(path: &Utf8Path) -> Result<Timestamp> {
     };
 
     inner().with_context(etx!("Failed to get mtime of {path:?}"))
+}
+
+impl State {
+    fn copied_path(&self) -> Result<&Utf8Path> {
+        match self {
+            State::Initial => bail!("Invalid state: Initial"),
+            State::Error => bail!("Invalid state: Error"),
+            State::Copied(path) | State::Loaded(path) => Ok(path),
+        }
+    }
 }

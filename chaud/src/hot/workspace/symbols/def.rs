@@ -51,6 +51,14 @@ impl Symbols {
         }
         Ok(())
     }
+
+    pub fn resolve_symbols(&self) -> Result<()> {
+        let inner = &mut *self.inner.lock();
+        for d in &mut inner.dylibs {
+            d.resolve_symbols()?;
+        }
+        Ok(())
+    }
 }
 
 fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
