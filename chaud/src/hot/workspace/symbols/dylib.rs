@@ -66,6 +66,16 @@ impl DylibData {
 
         res.with_context(etx!("Failed to load {self}"))
     }
+
+    pub(super) fn load_symbols(&mut self) -> Result<()> {
+        let lib = self.state.lib()?;
+
+        for t in self.tracked.values_mut() {
+            t.load(self.mtime, lib)
+                .with_context(etx!("Failed to load symbols for {}", self.name))?;
+        }
+        Ok(())
+    }
 }
 
 fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
@@ -127,8 +137,8 @@ fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
         Ok(())
     })?;
 
-    for (k, v) in &d.tracked {
-        ensure!(v.mtime() == d.mtime, "Symbol not resolved: {k:?}");
+    for t in d.tracked.values() {
+        ensure!(t.mtime() == d.mtime, "Symbol not resolved: {:?}", t.sym());
     }
 
     Ok(())
@@ -170,6 +180,15 @@ impl State {
             State::Initial => bail!("Invalid state: Initial"),
             State::Error => bail!("Invalid state: Error"),
             State::Copied(path) | State::Loaded(path, _) => Ok(path),
+        }
+    }
+
+    fn lib(&self) -> Result<Library> {
+        match *self {
+            State::Initial => bail!("Invalid state: Initial"),
+            State::Error => bail!("Invalid state: Error"),
+            State::Copied(_) => bail!("Invalid state: Copied"),
+            State::Loaded(_, lib) => Ok(lib),
         }
     }
 }

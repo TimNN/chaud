@@ -3,7 +3,7 @@ use core::ffi::c_void;
 use core::ptr::NonNull;
 use core::{fmt, mem, ptr};
 
-pub(super) type ErasedFnPtrPointee = c_void;
+pub type ErasedFnPtrPointee = c_void;
 
 pub type RawErasedFnPtr = *mut ErasedFnPtrPointee;
 
@@ -73,7 +73,7 @@ impl ErasedFnPtr {
     /// implementing [`FnPtr`].
     #[inline]
     #[must_use]
-    pub(super) unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
+    pub unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
         let inner = NonNull::new(raw)?;
 
         // SAFETY: Initializing does not count as a change, and the actual type
