@@ -6,12 +6,14 @@ use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_assert;
 use crate::hot::util::etx;
 use crate::hot::workspace::graph::{DylibIdx, Graph};
+use crate::hot::workspace::watcher::Watcher;
 use anyhow::{Context as _, Result};
 use core::ops;
 use parking_lot::Mutex;
 
 pub struct Symbols {
     inner: Mutex<SymbolsInner>,
+    watcher: Mutex<Watcher>,
     graph: &'static Graph,
 }
 
@@ -42,8 +44,8 @@ impl ops::IndexMut<DylibIdx> for SymbolsInner {
 }
 
 impl Symbols {
-    pub fn new(graph: &'static Graph) -> Result<&'static Symbols> {
-        new_inner(graph).context("Failed to initialize symbol tracker")
+    pub fn new(graph: &'static Graph, watcher: Watcher) -> Result<&'static Symbols> {
+        new_inner(graph, watcher).context("Failed to initialize symbol tracker")
     }
 
     pub fn copy_libs(&self) -> Result<()> {
@@ -90,7 +92,7 @@ impl Symbols {
     }
 }
 
-fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
+fn new_inner(graph: &'static Graph, watcher: Watcher) -> Result<&'static Symbols> {
     let mut dylibs = vec![];
 
     for krate in graph.dylibs() {
@@ -105,11 +107,17 @@ fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
     Ok(Box::leak(Box::new(Symbols {
         graph,
         inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice() }),
+        watcher: Mutex::new(watcher),
     })))
 }
 
 fn register_inner(s: &Symbols, sym: Sym, handle: ErasedHandle) -> Result<()> {
     let krate = s.graph.krate_named(&sym.krate())?;
+
+    {
+        let watcher = &mut *s.watcher.lock();
+        s.graph.watch(krate, |dir| watcher.watch(dir));
+    }
 
     let krate = &s.graph[krate];
     let dylib = krate.dylib().with_context(etx!("Not a dylib: {krate}"))?;

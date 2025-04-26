@@ -49,6 +49,16 @@ impl KrateData {
         self.flags.mark_patched();
     }
 
+    pub fn mark_dirty(&self) {
+        if self.flags.mark_dirty() {
+            log::debug!("Mark dirty: {self}");
+        }
+    }
+
+    pub(super) fn watch(&self) -> bool {
+        self.watched.swap(true)
+    }
+
     pub(super) fn assign_dylib_idx(&mut self, dylib: DylibIdx) {
         debug_assert!(self.dylib.is_none());
         debug_assert!(self.is_dylib());

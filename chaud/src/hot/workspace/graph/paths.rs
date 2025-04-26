@@ -28,7 +28,7 @@ impl PathMap {
         reason = "Pattern IDs are assumed to be valid."
     )]
     #[must_use]
-    pub(super) fn lookup(&self, path: &Path) -> PathMapResult {
+    pub fn lookup(&self, path: &Path) -> PathMapResult {
         let input = Input::new(path.as_os_str().as_encoded_bytes()).anchored(Anchored::Yes);
 
         let res = match self.auto.find(input) {
@@ -61,7 +61,8 @@ fn extract_paths(krates: &[KrateData]) -> Result<Box<[(&Utf8Path, PathMapResult)
     let mut paths = HashMap::new();
 
     for krate in krates {
-        for path in krate.paths_iter() {
+        for path in krate.dirs_iter() {
+            let path = path.path();
             let did_insert = paths
                 .try_insert(path, PathMapResult::Krate(krate.idx()))
                 .is_ok();

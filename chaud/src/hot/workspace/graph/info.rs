@@ -21,6 +21,20 @@ pub struct DylibPaths {
     build_dir: Option<Utf8PathBuf>,
 }
 
+#[derive(Copy, Clone)]
+pub enum DylibDir<'a> {
+    Src(&'a Utf8Path),
+    Root(&'a Utf8Path),
+}
+
+impl<'a> DylibDir<'a> {
+    pub fn path(self) -> &'a Utf8Path {
+        match self {
+            DylibDir::Root(p) | DylibDir::Src(p) => p,
+        }
+    }
+}
+
 /// Immutable information about a crate.
 pub struct KrateInfo {
     idx: KrateIdx,
@@ -80,12 +94,16 @@ impl KrateInfo {
         }
     }
 
-    pub(super) fn paths_iter(&self) -> impl Iterator<Item = &Utf8Path> {
-        let paths: [Option<&Utf8Path>; 3] = if let Some(paths) = &self.paths {
+    pub(super) fn dirs_iter(&self) -> impl Iterator<Item = DylibDir> {
+        let paths: [Option<DylibDir>; 3] = if let Some(paths) = &self.paths {
             [
-                Some(&paths.src_dir),
-                Some(&paths.root_dir),
-                paths.build_dir.as_ref().map(AsRef::as_ref),
+                Some(DylibDir::Root(&paths.root_dir)),
+                Some(DylibDir::Src(&paths.src_dir)),
+                paths
+                    .build_dir
+                    .as_ref()
+                    .map(AsRef::as_ref)
+                    .map(DylibDir::Src),
             ]
         } else {
             [None, None, None]

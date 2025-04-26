@@ -2,6 +2,7 @@
 
 use super::data::KrateData;
 use super::env::BuildEnv;
+use super::info::DylibDir;
 use super::paths::PathMap;
 use super::{DylibMap, KrateIdx, KrateIndex};
 use crate::hot::cargo::metadata::{KrateName, Metadata};
@@ -62,6 +63,14 @@ impl Graph {
     pub fn dylibs(&self) -> impl Iterator<Item = &KrateData> {
         self.dylib_map.indices().map(|i| &self[i])
     }
+
+    pub fn path_map(&self) -> &PathMap {
+        &self.path_map
+    }
+
+    pub fn watch(&self, idx: KrateIdx, mut new_path: impl FnMut(DylibDir)) {
+        watch_inner(self, idx, true, &mut new_path);
+    }
 }
 
 fn new_inner() -> Result<&'static Graph> {
@@ -101,4 +110,40 @@ fn load_krates(meta: &Metadata, env: &BuildEnv, index: &KrateIndex) -> Result<Bo
     }
 
     Ok(krates.into_boxed_slice())
+}
+
+fn watch_inner(graph: &Graph, idx: KrateIdx, explicit: bool, new_path: &mut impl FnMut(DylibDir)) {
+    let krate = &graph[idx];
+    if krate.watch() {
+        log::trace!("Already watching {krate}");
+        return;
+    }
+
+    krate.dirs_iter().for_each(&mut *new_path);
+
+    if !krate.is_dylib() {
+        if explicit {
+            log::error!("Cannot watch {krate}, `crate-type` does not include \"dylib\"");
+        } else if let Some(dep) = first_dylib_dep(graph, krate) {
+            log::error!(
+                "{krate} does not include `crate-type` \"dylib\", but depends on dylib {dep}"
+            );
+        } else {
+            log::info!("{krate} will not be watched (`crate-type` does not include \"dylib\")");
+        }
+    }
+
+    for &dep in krate.deps() {
+        watch_inner(graph, dep, false, new_path);
+    }
+}
+
+fn first_dylib_dep<'g>(graph: &'g Graph, krate: &KrateData) -> Option<&'g KrateData> {
+    for &dep in krate.deps() {
+        let dep = &graph[dep];
+        if dep.is_dylib() {
+            return Some(dep);
+        }
+    }
+    None
 }

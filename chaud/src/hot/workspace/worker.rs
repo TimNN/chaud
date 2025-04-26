@@ -1,8 +1,11 @@
+use super::watcher::Watcher;
 use crate::hot::registry::RegistryReceiver;
+use crate::hot::util::latest::LatestReader;
 use crate::hot::workspace::graph::Graph;
 use crate::hot::workspace::symbols::Symbols;
 use anyhow::Result;
 use std::thread;
+use std::time::Instant;
 
 pub fn launch(registry: RegistryReceiver) {
     log::trace!("Launching worker thread");
@@ -28,9 +31,33 @@ fn work(registry: RegistryReceiver) {
     };
 }
 
-fn init(_registry: RegistryReceiver) -> Result<(&'static Graph, &'static Symbols)> {
+fn init(
+    registry: RegistryReceiver,
+) -> Result<(&'static Graph, &'static Symbols, LatestReader<Instant>)> {
     let graph = Graph::new()?;
-    let symbols = Symbols::new(graph)?;
+    let (watcher, latest) = Watcher::new(graph)?;
+    let symbols = Symbols::new(graph, watcher)?;
 
-    Ok((graph, symbols))
+    thread::Builder::new()
+        .name("chaud-symbol-receiver".to_owned())
+        .spawn(move || symbol_receiver(&registry, symbols))?;
+
+    Ok((graph, symbols, latest))
+}
+
+fn symbol_receiver(registry: &RegistryReceiver, symbols: &Symbols) {
+    log::debug!("Symbol receiver thread is running");
+
+    loop {
+        let Ok(item) = registry.recv() else {
+            log::error!("Symbol sender has disconnected");
+            return;
+        };
+
+        if let Err(e) = symbols.register(item.sym, item.handle) {
+            log::error!("{e:#}");
+        } else {
+            log::info!("Registered {:?}", item.sym);
+        }
+    }
 }
