@@ -49,7 +49,7 @@ impl ErasedHandle {
     ///
     /// The passed argument must have the same actual type as `self`.
     #[inline]
-    pub(super) fn set(self, f: ErasedFnPtr) {
+    pub unsafe fn set(self, f: ErasedFnPtr) {
         // SAFETY: The caller must ensure that `f` has the same actual type as
         // `self`.
         // SAFETY: `self` / `inner` are consumed by value, so `inner` does not

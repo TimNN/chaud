@@ -76,6 +76,14 @@ impl DylibData {
         }
         Ok(())
     }
+
+    pub(super) fn activate_symbols(&mut self) -> Result<()> {
+        for t in self.tracked.values_mut() {
+            t.activate()
+                .with_context(etx!("Failed to activate symbols for {}", self.name))?;
+        }
+        Ok(())
+    }
 }
 
 fn new_inner(krate: &'static KrateData) -> Result<DylibData> {

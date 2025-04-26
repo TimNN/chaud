@@ -68,10 +68,17 @@ impl Symbols {
         Ok(())
     }
 
-    pub fn load_symbols(&self) -> Result<()> {
+    pub fn load_and_activate_symbols(&self) -> Result<()> {
         let inner = &mut *self.inner.lock();
+
+        // Ensure that _all_ symbols have been successfully loaded before
+        // activating _any_ of them.
         for d in &mut inner.dylibs {
             d.load_symbols()?;
+        }
+
+        for d in &mut inner.dylibs {
+            d.activate_symbols()?;
         }
         Ok(())
     }

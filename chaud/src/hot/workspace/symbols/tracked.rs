@@ -1,7 +1,7 @@
 use crate::hot::dylib::{Library, Sym};
 use crate::hot::handle::{ErasedFnPtr, ErasedHandle};
 use crate::hot::util::etx;
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result, bail, ensure};
 use jiff::Timestamp;
 use std::ffi::CString;
 
@@ -60,6 +60,22 @@ impl TrackedSymbol {
             self.sym,
             self.state
         ))
+    }
+
+    pub(super) fn activate(&mut self) -> Result<()> {
+        let f = match self.state {
+            State::Active => return Ok(()),
+            State::Mangled(_) => bail!("Failed to activate {:?}: Invalid state: Mangled", self.sym),
+            State::Loaded(f) => f,
+        };
+
+        // SAFETY: We assume that `f` has the correct type. This is covered
+        // under the `unsafe-hot-reload` feature opt-in.
+        unsafe { self.handle.set(f) };
+
+        self.state = State::Active;
+
+        Ok(())
     }
 }
 
