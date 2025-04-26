@@ -59,6 +59,14 @@ impl Symbols {
         }
         Ok(())
     }
+
+    pub fn load_libs(&self) -> Result<()> {
+        let inner = &mut *self.inner.lock();
+        for d in &mut inner.dylibs {
+            d.load()?;
+        }
+        Ok(())
+    }
 }
 
 fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {

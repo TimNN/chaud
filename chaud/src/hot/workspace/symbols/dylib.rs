@@ -1,12 +1,12 @@
 use super::TrackedSymbol;
 use crate::hot::cargo::metadata::KrateName;
-use crate::hot::dylib::{Sym, exported_symbols};
+use crate::hot::dylib::{Library, Sym, exported_symbols};
 use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
 use crate::hot::workspace::graph::{DylibIdx, KrateData};
 use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
-use core::fmt;
+use core::{fmt, mem};
 use hashbrown::HashMap;
 use jiff::Timestamp;
 use std::fs;
@@ -15,7 +15,7 @@ enum State {
     Initial,
     Error,
     Copied(Utf8PathBuf),
-    Loaded(Utf8PathBuf),
+    Loaded(Utf8PathBuf, Library),
 }
 
 pub struct DylibData {
@@ -55,6 +55,16 @@ impl DylibData {
 
     pub(super) fn resolve_symbols(&mut self) -> Result<()> {
         resolve_symbols_inner(self).with_context(etx!("Failed to resolve symbols for {self}"))
+    }
+
+    pub(super) fn load(&mut self) -> Result<()> {
+        let res = load_inner(self);
+
+        if res.is_err() {
+            self.state = State::Error;
+        }
+
+        res.with_context(etx!("Failed to load {self}"))
     }
 }
 
@@ -124,6 +134,21 @@ fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
     Ok(())
 }
 
+fn load_inner(d: &mut DylibData) -> Result<()> {
+    let path = match &mut d.state {
+        State::Initial => bail!("Invalid state: Initial"),
+        State::Error => bail!("Invalid state: Error"),
+        State::Copied(path) => mem::take(path),
+        State::Loaded(..) => return Ok(()),
+    };
+
+    let lib = Library::load(&path)?;
+
+    d.state = State::Loaded(path, lib);
+
+    Ok(())
+}
+
 fn dylib_mtime(path: &Utf8Path) -> Result<Timestamp> {
     let inner = || {
         let meta = path.metadata()?;
@@ -144,7 +169,7 @@ impl State {
         match self {
             State::Initial => bail!("Invalid state: Initial"),
             State::Error => bail!("Invalid state: Error"),
-            State::Copied(path) | State::Loaded(path) => Ok(path),
+            State::Copied(path) | State::Loaded(path, _) => Ok(path),
         }
     }
 }
