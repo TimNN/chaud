@@ -1,20 +1,22 @@
 //! The **def**inition of the [`Symbols`] type.
 
 use super::DylibData;
+use crate::hot::dylib::Sym;
+use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_assert;
+use crate::hot::util::etx;
 use crate::hot::workspace::graph::{DylibIdx, Graph};
 use anyhow::{Context as _, Result};
-use camino::Utf8Path;
 use core::ops;
 use parking_lot::Mutex;
 
 pub struct Symbols {
     inner: Mutex<SymbolsInner>,
+    graph: &'static Graph,
 }
 
 pub(super) struct SymbolsInner {
     dylibs: Box<[DylibData]>,
-    lib_dir: &'static Utf8Path,
 }
 
 impl ops::Index<DylibIdx> for SymbolsInner {
@@ -47,7 +49,7 @@ impl Symbols {
     pub fn copy_libs(&self) -> Result<()> {
         let inner = &mut *self.inner.lock();
         for d in &mut inner.dylibs {
-            d.maybe_copy(inner.lib_dir)?;
+            d.maybe_copy(self.graph.env().lib_dir())?;
         }
         Ok(())
     }
@@ -82,6 +84,10 @@ impl Symbols {
         }
         Ok(())
     }
+
+    pub fn register(&self, sym: Sym, handle: ErasedHandle) -> Result<()> {
+        register_inner(self, sym, handle).with_context(etx!("Failed to register {sym:?}"))
+    }
 }
 
 fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
@@ -96,9 +102,19 @@ fn new_inner(graph: &'static Graph) -> Result<&'static Symbols> {
         err_assert!(pos == dylib.idx().usize());
     }
 
-    let lib_dir = graph.env().lib_dir();
-
     Ok(Box::leak(Box::new(Symbols {
-        inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice(), lib_dir }),
+        graph,
+        inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice() }),
     })))
+}
+
+fn register_inner(s: &Symbols, sym: Sym, handle: ErasedHandle) -> Result<()> {
+    let krate = s.graph.krate_named(&sym.krate())?;
+
+    let krate = &s.graph[krate];
+    let dylib = krate.dylib().with_context(etx!("Not a dylib: {krate}"))?;
+
+    let inner = &mut *s.inner.lock();
+
+    inner[dylib].register(sym, handle)
 }

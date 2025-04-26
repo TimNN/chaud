@@ -1,13 +1,14 @@
 use super::TrackedSymbol;
 use crate::hot::cargo::metadata::KrateName;
 use crate::hot::dylib::{Library, Sym, exported_symbols};
+use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
 use crate::hot::workspace::graph::{DylibIdx, KrateData};
 use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::{fmt, mem};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, hash_map};
 use jiff::Timestamp;
 use std::fs;
 
@@ -84,6 +85,28 @@ impl DylibData {
         }
         Ok(())
     }
+
+    pub(super) fn register(&mut self, sym: Sym, handle: ErasedHandle) -> Result<()> {
+        let mtime = self.mtime_for_new_sym();
+
+        let t = match self.tracked.entry(sym) {
+            hash_map::Entry::Occupied(_) => bail!("Already registered: {sym:?}"),
+            hash_map::Entry::Vacant(entry) => entry.insert(TrackedSymbol::new(mtime, sym, handle)),
+        };
+
+        if let Err(e) = eagerly_update(t, self.mtime, &self.state) {
+            log::warn!("Failed to eagerly update {sym:?}: {e:#}");
+        }
+
+        Ok(())
+    }
+
+    fn mtime_for_new_sym(&self) -> Timestamp {
+        match self.state {
+            State::Initial => self.mtime,
+            _ => Timestamp::UNIX_EPOCH,
+        }
+    }
 }
 
 fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
@@ -128,6 +151,28 @@ fn maybe_copy_inner(d: &mut DylibData, lib_dir: &Utf8Path) -> Result<()> {
     d.state = State::Copied(dst);
 
     Ok(())
+}
+
+fn eagerly_update(t: &mut TrackedSymbol, mtime: Timestamp, state: &State) -> Result<()> {
+    if matches!(state, State::Initial) {
+        return Ok(());
+    }
+
+    let path = state.copied_path()?;
+
+    exported_symbols(path, |sym, mangled| {
+        if sym == t.sym() {
+            t.mangled(mtime, mangled)?;
+        }
+        Ok(())
+    })?;
+
+    ensure!(t.mtime() == mtime, "Symbol not resolved");
+
+    let Ok(lib) = state.lib() else { return Ok(()) };
+
+    t.load(mtime, lib)?;
+    t.activate()
 }
 
 fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {

@@ -4,8 +4,9 @@ use super::data::KrateData;
 use super::env::BuildEnv;
 use super::paths::PathMap;
 use super::{DylibMap, KrateIdx, KrateIndex};
-use crate::hot::cargo::metadata::Metadata;
+use crate::hot::cargo::metadata::{KrateName, Metadata};
 use crate::hot::util::assert::err_assert;
+use crate::hot::util::etx;
 use crate::hot::workspace::graph::DylibIdx;
 use crate::hot::workspace::graph::info::KrateInfo;
 use anyhow::{Context as _, Result};
@@ -50,6 +51,12 @@ impl Graph {
 
     pub fn env(&self) -> &BuildEnv {
         &self.env
+    }
+
+    pub fn krate_named(&self, name: &KrateName) -> Result<KrateIdx> {
+        self.index
+            .get_krate(name)
+            .with_context(etx!("No crate named {name}"))
     }
 
     pub fn dylibs(&self) -> impl Iterator<Item = &KrateData> {

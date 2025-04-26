@@ -20,6 +20,10 @@ pub struct TrackedSymbol {
 }
 
 impl TrackedSymbol {
+    pub(super) fn new(mtime: Timestamp, sym: Sym, handle: ErasedHandle) -> Self {
+        Self { sym, handle, mtime, state: State::Active }
+    }
+
     pub(super) fn sym(&self) -> Sym {
         self.sym
     }
