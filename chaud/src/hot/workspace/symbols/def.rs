@@ -70,7 +70,7 @@ impl Symbols {
     pub fn copy_libs(&self) -> Result<()> {
         let inner = &mut *self.inner.lock();
         for d in &mut inner.dylibs {
-            d.maybe_copy(self.graph.env().lib_dir())?;
+            d.maybe_copy(self.graph.env())?;
         }
         Ok(())
     }

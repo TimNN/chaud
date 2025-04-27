@@ -22,6 +22,10 @@ impl BuildEnv {
     pub fn lib_dir(&self) -> &Utf8Path {
         &self.lib_dir
     }
+
+    pub fn chaud_dir(&self) -> &Utf8Path {
+        &self.chaud_dir
+    }
 }
 
 fn new_inner(_meta: &Metadata) -> Result<BuildEnv> {

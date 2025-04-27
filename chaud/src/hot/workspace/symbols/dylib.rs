@@ -4,7 +4,7 @@ use crate::hot::dylib::{Library, Sym, exported_symbols};
 use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
-use crate::hot::workspace::graph::{DylibIdx, KrateData};
+use crate::hot::workspace::graph::{BuildEnv, DylibIdx, KrateData};
 use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::{fmt, mem};
@@ -44,8 +44,8 @@ impl DylibData {
         self.idx
     }
 
-    pub(super) fn maybe_copy(&mut self, lib_dir: &Utf8Path) -> Result<()> {
-        let res = maybe_copy_inner(self, lib_dir);
+    pub(super) fn maybe_copy(&mut self, env: &BuildEnv) -> Result<()> {
+        let res = maybe_copy_inner(self, env);
 
         if res.is_err() {
             self.state = State::Error;
@@ -69,7 +69,12 @@ impl DylibData {
     }
 
     pub(super) fn load_symbols(&mut self) -> Result<()> {
-        let lib = self.state.lib()?;
+        let lib = match self.state {
+            State::Initial => return Ok(()),
+            State::Error => bail!("LoadSym: Invalid state: Error"),
+            State::Copied(_) => bail!("LoadSym: Invalid state: Copied"),
+            State::Loaded(_, lib) => lib,
+        };
 
         for t in self.tracked.values_mut() {
             t.load(self.mtime, lib)
@@ -134,14 +139,15 @@ fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
     })
 }
 
-fn maybe_copy_inner(d: &mut DylibData, lib_dir: &Utf8Path) -> Result<()> {
+fn maybe_copy_inner(d: &mut DylibData, env: &BuildEnv) -> Result<()> {
     let mtime = dylib_mtime(d.file)?;
 
     if mtime == d.mtime {
         return Ok(());
     }
 
-    let dst = lib_dir.join(d.name.lib_file_name_versioned(d.next));
+    let dst = env.chaud_dir().join(d.name.lib_file_name_versioned(d.next));
+
     fs::copy(d.file, &dst)?;
     d.next = d.next.checked_add(1).context("Dylib version overflow")?;
 
@@ -169,7 +175,9 @@ fn eagerly_update(t: &mut TrackedSymbol, mtime: Timestamp, state: &State) -> Res
 
     ensure!(t.mtime() == mtime, "Symbol not resolved");
 
-    let Ok(lib) = state.lib() else { return Ok(()) };
+    let State::Loaded(_, lib) = *state else {
+        return Ok(());
+    };
 
     t.load(mtime, lib)?;
     t.activate(&mut 0)
@@ -207,6 +215,8 @@ fn load_inner(d: &mut DylibData) -> Result<()> {
 
     let lib = Library::load(&path)?;
 
+    log::trace!("Loaded {d} from {path:?}");
+
     d.state = State::Loaded(path, lib);
 
     Ok(())
@@ -233,15 +243,6 @@ impl State {
             State::Initial => bail!("CopiedPath: Invalid state: Initial"),
             State::Error => bail!("CopiedPath: Invalid state: Error"),
             State::Copied(path) | State::Loaded(path, _) => Ok(path),
-        }
-    }
-
-    fn lib(&self) -> Result<Library> {
-        match *self {
-            State::Initial => bail!("Lib: Invalid state: Initial"),
-            State::Error => bail!("Lib: Invalid state: Error"),
-            State::Copied(_) => bail!("Lib: Invalid state: Copied"),
-            State::Loaded(_, lib) => Ok(lib),
         }
     }
 }
