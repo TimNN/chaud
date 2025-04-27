@@ -1,4 +1,4 @@
-use super::graph::{Graph, KrateData};
+use super::graph::{ClearDirtyResult, Graph, KrateData};
 use crate::hot::util::assert::err_assert;
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result};
@@ -31,6 +31,16 @@ impl Graph {
         }
 
         Ok(res)
+    }
+
+    pub(super) fn clear_dirty_if_patched(&self) -> ClearDirtyResult {
+        let mut res = ClearDirtyResult::Ok;
+
+        for krate in self.dylibs() {
+            res = krate.clear_dirty_if_patched().merge(res);
+        }
+
+        res
     }
 
     fn krates_needing_patch(&self) -> impl Iterator<Item = &KrateData> {

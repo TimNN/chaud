@@ -9,6 +9,8 @@
 pub use self::data::*;
 pub use self::def::*;
 pub use self::dylib::*;
+pub use self::env::*;
+pub use self::flags::*;
 pub use self::index::*;
 pub use self::info::*;
 pub use self::paths::*;

@@ -1,3 +1,4 @@
+use super::ClearDirtyResult;
 use super::dylib::DylibIdx;
 use super::flags::KrateFlags;
 use super::info::KrateInfo;
@@ -53,6 +54,14 @@ impl KrateData {
         if self.flags.mark_dirty() {
             log::debug!("Mark dirty: {self}");
         }
+    }
+
+    pub fn clear_patched(&self) {
+        self.flags.clear_patched();
+    }
+
+    pub fn clear_dirty_if_patched(&self) -> ClearDirtyResult {
+        self.flags.clear_dirty_if_patched()
     }
 
     pub(super) fn watch(&self) -> bool {

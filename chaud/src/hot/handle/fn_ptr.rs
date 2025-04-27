@@ -3,7 +3,7 @@ use core::ffi::c_void;
 use core::ptr::NonNull;
 use core::{fmt, mem, ptr};
 
-pub type ErasedFnPtrPointee = c_void;
+pub(super) type ErasedFnPtrPointee = c_void;
 
 pub type RawErasedFnPtr = *mut ErasedFnPtrPointee;
 

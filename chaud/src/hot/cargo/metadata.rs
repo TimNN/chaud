@@ -61,6 +61,10 @@ impl Package {
 pub struct PackageName(String);
 
 impl PackageName {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
     pub fn to_krate(&self) -> KrateName<'static> {
         KrateName(Cow::Owned(self.0.replace('-', "_")))
     }

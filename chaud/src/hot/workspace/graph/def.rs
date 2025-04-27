@@ -71,6 +71,12 @@ impl Graph {
     pub fn watch(&self, idx: KrateIdx, mut new_path: impl FnMut(DylibDir)) {
         watch_inner(self, idx, true, &mut new_path);
     }
+
+    pub fn clear_patched(&self) {
+        for krate in &self.krates {
+            krate.clear_patched();
+        }
+    }
 }
 
 fn new_inner() -> Result<&'static Graph> {

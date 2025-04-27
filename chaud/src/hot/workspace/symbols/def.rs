@@ -1,6 +1,7 @@
 //! The **def**inition of the [`Symbols`] type.
 
 use super::DylibData;
+use crate::hot::cargo::metadata::PackageName;
 use crate::hot::dylib::Sym;
 use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_assert;
@@ -9,7 +10,8 @@ use crate::hot::workspace::graph::{DylibIdx, Graph};
 use crate::hot::workspace::watcher::Watcher;
 use anyhow::{Context as _, Result};
 use core::ops;
-use parking_lot::Mutex;
+use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
+use std::collections::BTreeSet;
 
 pub struct Symbols {
     inner: Mutex<SymbolsInner>,
@@ -19,6 +21,17 @@ pub struct Symbols {
 
 pub(super) struct SymbolsInner {
     dylibs: Box<[DylibData]>,
+    with_tracked: BTreeSet<&'static PackageName>,
+}
+
+pub struct TrackedKrates<'a> {
+    guard: MappedMutexGuard<'a, BTreeSet<&'static PackageName>>,
+}
+
+impl TrackedKrates<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = &'static PackageName> {
+        self.guard.iter().copied()
+    }
 }
 
 impl ops::Index<DylibIdx> for SymbolsInner {
@@ -48,6 +61,12 @@ impl Symbols {
         new_inner(graph, watcher).context("Failed to initialize symbol tracker")
     }
 
+    pub fn tracked_krates(&self) -> TrackedKrates {
+        TrackedKrates {
+            guard: MutexGuard::map(self.inner.lock(), |inner| &mut inner.with_tracked),
+        }
+    }
+
     pub fn copy_libs(&self) -> Result<()> {
         let inner = &mut *self.inner.lock();
         for d in &mut inner.dylibs {
@@ -72,7 +91,7 @@ impl Symbols {
         Ok(())
     }
 
-    pub fn load_and_activate_symbols(&self) -> Result<()> {
+    pub fn load_and_activate_symbols(&self) -> Result<u32> {
         let inner = &mut *self.inner.lock();
 
         // Ensure that _all_ symbols have been successfully loaded before
@@ -81,10 +100,11 @@ impl Symbols {
             d.load_symbols()?;
         }
 
+        let mut count = 0;
         for d in &mut inner.dylibs {
-            d.activate_symbols()?;
+            d.activate_symbols(&mut count)?;
         }
-        Ok(())
+        Ok(count)
     }
 
     pub fn register(&self, sym: Sym, handle: ErasedHandle) -> Result<()> {
@@ -106,7 +126,10 @@ fn new_inner(graph: &'static Graph, watcher: Watcher) -> Result<&'static Symbols
 
     Ok(Box::leak(Box::new(Symbols {
         graph,
-        inner: Mutex::new(SymbolsInner { dylibs: dylibs.into_boxed_slice() }),
+        inner: Mutex::new(SymbolsInner {
+            dylibs: dylibs.into_boxed_slice(),
+            with_tracked: BTreeSet::new(),
+        }),
         watcher: Mutex::new(watcher),
     })))
 }
@@ -124,5 +147,8 @@ fn register_inner(s: &Symbols, sym: Sym, handle: ErasedHandle) -> Result<()> {
 
     let inner = &mut *s.inner.lock();
 
-    inner[dylib].register(sym, handle)
+    inner[dylib].register(sym, handle)?;
+    inner.with_tracked.insert(krate.pkg());
+
+    Ok(())
 }

@@ -78,9 +78,9 @@ impl DylibData {
         Ok(())
     }
 
-    pub(super) fn activate_symbols(&mut self) -> Result<()> {
+    pub(super) fn activate_symbols(&mut self, count: &mut u32) -> Result<()> {
         for t in self.tracked.values_mut() {
-            t.activate()
+            t.activate(count)
                 .with_context(etx!("Failed to activate symbols for {}", self.name))?;
         }
         Ok(())
@@ -172,15 +172,15 @@ fn eagerly_update(t: &mut TrackedSymbol, mtime: Timestamp, state: &State) -> Res
     let Ok(lib) = state.lib() else { return Ok(()) };
 
     t.load(mtime, lib)?;
-    t.activate()
+    t.activate(&mut 0)
 }
 
 fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
-    let path = d.state.copied_path()?;
-
     if !d.tracked.values().any(|t| t.mtime() != d.mtime) {
         return Ok(());
     }
+
+    let path = d.state.copied_path()?;
 
     exported_symbols(path, |sym, mangled| {
         if let Some(t) = d.tracked.get_mut(&sym.key()) {
@@ -199,8 +199,8 @@ fn resolve_symbols_inner(d: &mut DylibData) -> Result<()> {
 
 fn load_inner(d: &mut DylibData) -> Result<()> {
     let path = match &mut d.state {
-        State::Initial => bail!("Invalid state: Initial"),
-        State::Error => bail!("Invalid state: Error"),
+        State::Initial => return Ok(()),
+        State::Error => bail!("Load: Invalid state: Error"),
         State::Copied(path) => mem::take(path),
         State::Loaded(..) => return Ok(()),
     };
@@ -230,17 +230,17 @@ fn dylib_mtime(path: &Utf8Path) -> Result<Timestamp> {
 impl State {
     fn copied_path(&self) -> Result<&Utf8Path> {
         match self {
-            State::Initial => bail!("Invalid state: Initial"),
-            State::Error => bail!("Invalid state: Error"),
+            State::Initial => bail!("CopiedPath: Invalid state: Initial"),
+            State::Error => bail!("CopiedPath: Invalid state: Error"),
             State::Copied(path) | State::Loaded(path, _) => Ok(path),
         }
     }
 
     fn lib(&self) -> Result<Library> {
         match *self {
-            State::Initial => bail!("Invalid state: Initial"),
-            State::Error => bail!("Invalid state: Error"),
-            State::Copied(_) => bail!("Invalid state: Copied"),
+            State::Initial => bail!("Lib: Invalid state: Initial"),
+            State::Error => bail!("Lib: Invalid state: Error"),
+            State::Copied(_) => bail!("Lib: Invalid state: Copied"),
             State::Loaded(_, lib) => Ok(lib),
         }
     }

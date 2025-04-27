@@ -52,6 +52,8 @@ impl TrackedSymbol {
             .ok()
             .context("mangled symbol name contained nul byte")?;
 
+        log::debug!("Updated mangled name of {:?} to {mangled:?}", self.sym);
+
         self.state = State::Mangled(mangled);
         self.mtime = mtime;
 
@@ -66,7 +68,7 @@ impl TrackedSymbol {
         ))
     }
 
-    pub(super) fn activate(&mut self) -> Result<()> {
+    pub(super) fn activate(&mut self, count: &mut u32) -> Result<()> {
         let f = match self.state {
             State::Active => return Ok(()),
             State::Mangled(_) => bail!("Failed to activate {:?}: Invalid state: Mangled", self.sym),
@@ -76,6 +78,9 @@ impl TrackedSymbol {
         // SAFETY: We assume that `f` has the correct type. This is covered
         // under the `unsafe-hot-reload` feature opt-in.
         unsafe { self.handle.set(f) };
+
+        *count = count.saturating_add(1);
+        log::debug!("Update handle for {:?} to {f:?}", self.sym);
 
         self.state = State::Active;
 

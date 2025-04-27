@@ -1,4 +1,5 @@
 use crate::hot::util::relaxed::RelaxedU8;
+use core::cmp;
 
 const DIRTY_BIT: u8 = 0b01;
 const PATCH_BIT: u8 = 0b10;
@@ -16,9 +17,17 @@ pub struct KrateFlags {
     inner: RelaxedU8,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClearDirtyResult {
-    Ok,
-    UnpatchedDirty,
+    Ok = 0,
+    UnpatchedDirty = 1,
+}
+
+impl ClearDirtyResult {
+    #[must_use]
+    pub fn merge(self, other: ClearDirtyResult) -> ClearDirtyResult {
+        cmp::max(self, other)
+    }
 }
 
 impl KrateFlags {

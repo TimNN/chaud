@@ -1,4 +1,4 @@
-use crate::hot::handle::{ErasedFnPtr, ErasedFnPtrPointee, RawErasedFnPtr};
+use crate::hot::handle::{ErasedFnPtr, RawErasedFnPtr};
 use crate::hot::util::etx;
 use anyhow::{Context as _, Result};
 use camino::Utf8Path;
@@ -40,7 +40,7 @@ fn load_inner(path: &Utf8Path) -> Result<ll::Library> {
 fn get_inner(lib: &ll::Library, name: &CStr) -> Result<ErasedFnPtr> {
     // SAFETY: The symbol is immediately converted into a raw pointer, so its
     // type doesn't really matter.
-    let f = unsafe { lib.get::<ErasedFnPtrPointee>(name.to_bytes_with_nul()) }?;
+    let f = unsafe { lib.get::<RawErasedFnPtr>(name.to_bytes_with_nul()) }?;
     let f: RawErasedFnPtr = f.as_raw_ptr();
 
     // SAFETY: We assume that `name` resolved to a function pointer. This is
