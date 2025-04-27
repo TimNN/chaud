@@ -18,23 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        host: [macos, linux, windows-msvc, windows-gnu]
+        os: [macos-latest, ubuntu-latest]
         rust: ["stable", "beta", "nightly"]
         include:
-          # host -> OS mappings
-          - host: macos
-            os: macos-latest
-          - host: linux
-            os: ubuntu-latest
-          - host: windows-msvc
-            os: windows-latest
-          - host: windows-gnu
-            os: windows-latest
-
-          # toolchain suffix
-          - host: windows-gnu
-            rust-suffix: -x86_64-pc-windows-gnu
-
           # rust channel config
           - rust: stable
             components: clippy, rustfmt
@@ -54,7 +40,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ matrix.rust }}${{ matrix.rust-suffix }}
+          toolchain: ${{ matrix.rust }}
           components: ${{ matrix.components }}
 
       - name: Check Format

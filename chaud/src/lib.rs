@@ -2,9 +2,12 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!(env!("README"))]
 
+#[cfg(not(unix))]
+compile_error!("Hot-reloading is only supported on `cfg(unix)` platforms");
+
 mod func;
 
-#[cfg(feature = "unsafe-hot-reload")]
+#[cfg(all(unix, feature = "unsafe-hot-reload"))]
 mod hot;
 
 /// A trait implemented for function pointers.
@@ -26,9 +29,9 @@ pub trait Func<Ptr: FnPtr>: func::Sealed<Ptr> {}
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct Handle<F: FnPtr> {
-    #[cfg(not(feature = "unsafe-hot-reload"))]
+    #[cfg(not(all(unix, feature = "unsafe-hot-reload")))]
     repr: F,
-    #[cfg(feature = "unsafe-hot-reload")]
+    #[cfg(all(unix, feature = "unsafe-hot-reload"))]
     repr: crate::hot::TypedHandle<F>,
 }
 
@@ -95,10 +98,10 @@ impl<F: FnPtr> Handle<F> {
     /// [`crate-type`]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-crate-type-field
     #[inline]
     pub fn new<Item: Func<F>>(_: Item, f: F) -> Self {
-        #[cfg(not(feature = "unsafe-hot-reload"))]
+        #[cfg(not(all(unix, feature = "unsafe-hot-reload")))]
         return Self { repr: f };
 
-        #[cfg(feature = "unsafe-hot-reload")]
+        #[cfg(all(unix, feature = "unsafe-hot-reload"))]
         return Self {
             repr: crate::hot::create_handle(core::any::type_name::<Item>(), f),
         };
@@ -138,10 +141,10 @@ impl<F: FnPtr> Handle<F> {
     #[inline]
     #[must_use]
     pub fn get(self) -> F {
-        #[cfg(not(feature = "unsafe-hot-reload"))]
+        #[cfg(not(all(unix, feature = "unsafe-hot-reload")))]
         return self.repr;
 
-        #[cfg(feature = "unsafe-hot-reload")]
+        #[cfg(all(unix, feature = "unsafe-hot-reload"))]
         return self.repr.get();
     }
 }

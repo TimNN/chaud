@@ -3,10 +3,7 @@ use crate::hot::util::etx;
 use anyhow::{Context as _, Result};
 use camino::Utf8Path;
 use core::ffi::CStr;
-#[cfg(unix)]
 use libloading::os::unix as ll;
-#[cfg(windows)]
-use libloading::os::windows as ll;
 
 #[derive(Copy, Clone)]
 pub struct Library(&'static ll::Library);
@@ -27,11 +24,7 @@ fn load_inner(path: &Utf8Path) -> Result<ll::Library> {
     // This is covered under the `unsafe-hot-reload` feature opt-in. We'll never
     // run termination routines.
     unsafe {
-        #[cfg(unix)]
         let lib = ll::Library::open(Some(path), ll::RTLD_GLOBAL | ll::RTLD_NOW)?;
-
-        #[cfg(windows)]
-        let lib = ll::Library::new(path)?;
 
         Ok(lib)
     }

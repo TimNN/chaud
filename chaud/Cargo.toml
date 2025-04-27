@@ -81,12 +81,6 @@ optional = true
 default-features = false
 features = ["read_core"]
 
-[target.'cfg(windows)'.dependencies.object]
-version = "0.36.7"
-optional = true
-default-features = false
-features = ["pe"]
-
 [target.'cfg(target_os = "macos")'.dependencies.object]
 version = "0.36.7"
 optional = true
