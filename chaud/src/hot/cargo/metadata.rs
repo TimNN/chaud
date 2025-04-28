@@ -95,7 +95,6 @@ impl Dependency {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DependencyKind {
     Normal,
-    Build,
     Other,
 }
 
@@ -106,10 +105,7 @@ impl DeJson for DependencyKind {
             return Ok(Self::Normal);
         }
         s.string(i)?;
-        match s.strbuf.as_ref() {
-            "build" => Ok(Self::Build),
-            _ => Ok(Self::Other),
-        }
+        Ok(Self::Other)
     }
 }
 
@@ -151,22 +147,19 @@ impl<'a> KrateName<'a> {
         Self(Cow::Borrowed(name))
     }
 
-    pub fn lib_file_name(&self) -> String {
-        self.lib_file_name_suffix("")
+    pub fn rlib_file_name(&self) -> String {
+        format!("lib{}.rlib", self.0)
     }
 
-    pub fn lib_file_name_versioned(&self, version: u32) -> String {
-        self.lib_file_name_suffix(format_args!(".{version}"))
-    }
-
-    fn lib_file_name_suffix(&self, suffix: impl fmt::Display) -> String {
-        format!("{DLL_PREFIX}{}{}.{DLL_EXTENSION}", self.0, suffix)
+    pub fn dylib_file_name_versioned(&self, version: u32) -> String {
+        format!("{DLL_PREFIX}{}.{}.{DLL_EXTENSION}", self.0, version)
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TargetKind {
-    Dylib,
+    Lib,
+    RLib,
     CustomBuild,
     Other,
 }
@@ -175,7 +168,8 @@ impl DeJson for TargetKind {
     fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
         s.string(i)?;
         match s.strbuf.as_ref() {
-            "dylib" => Ok(Self::Dylib),
+            "lib" => Ok(Self::Lib),
+            "rlib" => Ok(Self::RLib),
             "custom-build" => Ok(Self::CustomBuild),
             _ => Ok(Self::Other),
         }

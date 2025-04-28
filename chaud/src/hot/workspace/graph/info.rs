@@ -11,7 +11,7 @@ use core::fmt;
 
 pub struct DylibPaths {
     manifest_file: Utf8PathBuf,
-    dylib_file: Utf8PathBuf,
+    rlib_file: Utf8PathBuf,
 
     root_dir: Utf8PathBuf,
     src_dir: Utf8PathBuf,
@@ -130,11 +130,9 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
 }
 
 fn filter_deps(index: &KrateIndex, deps: &[Dependency]) -> Box<[KrateIdx]> {
-    let include = |dk| [DependencyKind::Build, DependencyKind::Normal].contains(&dk);
-
     let mut deps: Vec<_> = deps
         .iter()
-        .filter(|d| include(d.kind()))
+        .filter(|d| d.kind() == DependencyKind::Normal)
         .filter_map(|d| index.get_pkg(d.name()))
         .collect();
     deps.sort_unstable();
@@ -186,19 +184,19 @@ impl DylibPaths {
             }
         }
 
-        let dylib_file = env.lib_dir().join(pkg.name().to_krate().lib_file_name());
+        let rlib_file = env.lib_dir().join(pkg.name().to_krate().rlib_file_name());
 
         Ok(Some(Self {
             manifest_file,
-            dylib_file,
+            rlib_file,
             root_dir,
             src_dir,
             build_dir,
         }))
     }
 
-    pub fn dylib_file(&self) -> &Utf8Path {
-        &self.dylib_file
+    pub fn rlib_file(&self) -> &Utf8Path {
+        &self.rlib_file
     }
 
     pub fn manifest_file(&self) -> &Utf8Path {
@@ -213,6 +211,8 @@ struct Targets<'a> {
 
 impl<'a> Targets<'a> {
     fn new(targets: &'a [Target]) -> Result<Option<Self>> {
+        let is_rlib = |tk| [TargetKind::Lib, TargetKind::RLib].contains(tk);
+
         let mut build = None;
         let mut dylib = None;
 
@@ -221,7 +221,7 @@ impl<'a> Targets<'a> {
                 ensure!(build.is_none(), "Multiple custom-build targets");
                 build = Some(target);
             }
-            if target.kind().contains(&TargetKind::Dylib) {
+            if target.kind().iter().any(is_rlib) {
                 ensure!(build.is_none(), "Multiple dylib targets");
                 dylib = Some(target);
             }

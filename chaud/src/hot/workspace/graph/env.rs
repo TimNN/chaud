@@ -19,7 +19,7 @@ impl BuildEnv {
         &self.profile
     }
 
-    pub fn lib_dir(&self) -> &Utf8Path {
+    pub(super) fn lib_dir(&self) -> &Utf8Path {
         &self.lib_dir
     }
 
@@ -45,7 +45,7 @@ fn new_inner(_meta: &Metadata) -> Result<BuildEnv> {
     let chaud_dir = exe_dir.join("chaud");
     fs::create_dir_all(&chaud_dir)?;
 
-    let this = BuildEnv { profile, lib_dir: exe_dir.to_owned(), chaud_dir };
+    let this = BuildEnv { profile, lib_dir: exe_dir.join("deps"), chaud_dir };
 
     log::debug!("{this:?}");
 

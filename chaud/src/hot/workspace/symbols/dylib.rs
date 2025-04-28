@@ -1,6 +1,6 @@
 use super::TrackedSymbol;
 use crate::hot::cargo::metadata::KrateName;
-use crate::hot::dylib::{Library, Sym, exported_symbols};
+use crate::hot::dylib::{Library, Sym, exported_symbols, link_rlib_to_dylib};
 use crate::hot::handle::ErasedHandle;
 use crate::hot::util::assert::err_unreachable;
 use crate::hot::util::etx;
@@ -10,7 +10,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use core::{fmt, mem};
 use hashbrown::{HashMap, hash_map};
 use jiff::Timestamp;
-use std::fs;
 
 enum State {
     Initial,
@@ -123,7 +122,7 @@ fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
     };
 
     let name = krate.name();
-    let file = paths.dylib_file();
+    let file = paths.rlib_file();
     let mtime = dylib_mtime(file)?;
 
     log::trace!("Initialized {name} with mtime {mtime:?} from {file:?}");
@@ -142,16 +141,20 @@ fn new_inner(krate: &'static KrateData) -> Result<DylibData> {
 fn maybe_copy_inner(d: &mut DylibData, env: &BuildEnv) -> Result<()> {
     let mtime = dylib_mtime(d.file)?;
 
+    log::trace!("Hello, {d}, {mtime:?} {:?}", d.mtime);
+
     if mtime == d.mtime {
         return Ok(());
     }
 
-    let dst = env.chaud_dir().join(d.name.lib_file_name_versioned(d.next));
+    let dst = env
+        .chaud_dir()
+        .join(d.name.dylib_file_name_versioned(d.next));
 
-    fs::copy(d.file, &dst)?;
+    link_rlib_to_dylib(d.file, &dst)?;
     d.next = d.next.checked_add(1).context("Dylib version overflow")?;
 
-    log::trace!("Copied dylib for {d} with mtime {mtime:?} to {dst:?}");
+    log::trace!("Linked dylib for {d} with mtime {mtime:?} as {dst:?}");
 
     d.mtime = mtime;
     d.state = State::Copied(dst);
