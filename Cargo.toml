@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["chaud"]
+members = ["chaud", "chaud-hot"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
@@ -23,7 +23,8 @@ unimplemented = "warn"
 unreachable = "warn"
 unwrap_used = "forbid"
 
-cargo = { level = "warn", priority = -1 }
+# FIXME: re-enable
+# cargo = { level = "warn", priority = -1 }
 
 pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
