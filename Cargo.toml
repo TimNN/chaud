@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["chaud", "chaud-hot"]
+members = ["chaud", "chaud-def", "chaud-hot"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"

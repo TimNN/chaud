@@ -7,11 +7,10 @@
 #![allow(dead_code, reason = "TODO: remove once module is fully in use")]
 
 pub use self::handle::TypedHandle;
-pub use self::handles::create_handle;
 
 mod cargo;
 mod dylib;
-mod handle;
+pub mod handle;
 mod handles;
 mod registry;
 mod util;

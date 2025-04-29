@@ -28,6 +28,9 @@ silence-log-level-warning = []
 unsafe-hot-reload = ["dep:chaud-hot"]
 
 
+[dependencies.chaud-def]
+path = "../chaud-def"
+
 [dependencies.chaud-hot]
 path = "../chaud-hot"
 optional = true

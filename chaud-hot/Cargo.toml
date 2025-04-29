@@ -6,8 +6,6 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-# FIXME: remove from this crate.
-unsafe-hot-reload = []
 
 # FIXME: Document.
 silence-log-level-warning = []
@@ -24,6 +22,9 @@ parking_lot = "0.12.3"
 rustc-demangle = "0.1.24"
 toml_edit = "0.22.24"
 topological-sort = "0.2.2"
+
+[dependencies.chaud-def]
+path = "../chaud-def"
 
 [dependencies.hashbrown]
 version = "0.15.2"
