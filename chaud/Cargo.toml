@@ -25,11 +25,10 @@ silence-log-level-warning = []
 # Enable hot-reloading functionality.
 #
 # SAFETY: See https://docs.rs/chaud#safety
-unsafe-hot-reload = ["dep:chaud-hot"]
+unsafe-hot-reload = ["dep:chaud-hot", "chaud-macros/unsafe-hot-reload"]
 
-
-[dependencies.chaud-def]
-path = "../chaud-def"
+[dependencies.chaud-macros]
+path = "../chaud-macros"
 
 [dependencies.chaud-hot]
 path = "../chaud-hot"

@@ -1,11 +1,15 @@
 [package]
-name = "chaud-def"
+name = "chaud-macros"
 version = "0.1.0"
 edition = "2024"
 license.workspace = true
 repository.workspace = true
 
-[dependencies]
+[lib]
+proc-macro = true
+
+[features]
+unsafe-hot-reload = []
 
 [lints]
 workspace = true

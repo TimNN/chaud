@@ -1,59 +1,39 @@
-use chaud_def::Handle;
-use parking_lot::Once;
+use core::marker::PhantomData;
 
-mod func;
-
-mod hot;
-
-/// A trait implemented for function pointers.
-///
 /// # Safety
 ///
-/// Guaranteed to be only implemented for function pointers.
-#[expect(private_bounds, reason = "sealed")]
-pub trait FnPtr: func::Sealed + Copy + Send + Sized + 'static {}
+/// [`Self::Ptr`] must be a function pointer.
+#[allow(non_upper_case_globals)]
+pub unsafe trait Func {
+    type Ptr;
 
-/// A trait implemented for [`Fn`]s.
-///
-/// `Ptr` is the corresponding function pointer type.
-#[expect(private_bounds, reason = "sealed")]
-pub trait Func<Ptr: FnPtr>: func::Sealed<Ptr> {}
+    const ID: &str;
 
-#[repr(transparent)]
-pub struct AtomicHandle<H: Handle> {
-    f: H::Ptr,
+    const actual: Self::Ptr;
+
+    const init: Self::Ptr;
+
+    const jump: Self::Ptr;
 }
 
-impl<H: Handle> AtomicHandle<H> {
+pub struct AtomicFunc<F: Func> {
+    _pd: PhantomData<F>,
+}
+
+impl<F: Func> AtomicFunc<F> {
     #[must_use]
-    pub const fn new(f: H::Ptr) -> Self {
-        Self { f }
+    #[expect(clippy::new_without_default, reason = "intentional")]
+    pub const fn new() -> Self {
+        Self { _pd: PhantomData }
     }
 
-    #[inline]
-    pub fn get(&self) -> H::Ptr {
-        self.f
-    }
-}
-
-#[allow(dead_code)]
-pub struct HandleId<H: Handle> {
-    init: Once,
-    id: &'static str,
-    handle: &'static AtomicHandle<H>,
-    trampoline: H::Ptr,
-}
-
-impl<H: Handle> HandleId<H> {
     #[must_use]
-    pub const fn new(
-        id: &'static str,
-        handle: &'static AtomicHandle<H>,
-        trampoline: H::Ptr,
-    ) -> Self {
-        Self { init: Once::new(), id, handle, trampoline }
+    pub fn get(&self) -> F::Ptr {
+        todo!();
     }
 
-    #[inline]
-    pub fn register(&'static self) {}
+    #[must_use]
+    pub fn init(&self) -> F::Ptr {
+        todo!();
+    }
 }
