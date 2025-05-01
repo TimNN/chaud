@@ -9,14 +9,14 @@ pub struct AtomicFnPtr {
     ///
     /// * The actual type must never change.
     /// * The actual type must be a function pointer implementing
-    ///   [`crate::FnPtr`].
+    ///   [`super::FnPtrLike`].
     inner: AtomicPtr<ErasedFnPtrPointee>,
 }
 
 impl AtomicFnPtr {
     #[inline]
     #[must_use]
-    pub(super) fn new(f: ErasedFnPtr) -> Self {
+    pub(super) const fn new(f: ErasedFnPtr) -> Self {
         // SAFETY: Initializing defines the actual type stored. The other
         // requirements are enforced by `ErasedFnPtr`.
         Self { inner: AtomicPtr::new(f.raw()) }

@@ -2,6 +2,8 @@
 name = "chaud-hot"
 version = "0.1.0"
 edition = "2024"
+
+readme = "README.md"
 license.workspace = true
 repository.workspace = true
 
@@ -23,6 +25,10 @@ rustc-demangle = "0.1.24"
 toml_edit = "0.22.24"
 topological-sort = "0.2.2"
 
+[dependencies.ctor]
+version = "0.4.2"
+default-features = false
+
 [dependencies.hashbrown]
 version = "0.15.2"
 default-features = false
@@ -38,23 +44,13 @@ version = "0.2.1"
 default-features = false
 features = ["json"]
 
-[dependencies.object]
-version = "0.36.7"
-default-features = false
-features = ["read_core"]
-
-[target.'cfg(target_os = "macos")'.dependencies.object]
-version = "0.36.7"
-default-features = false
-features = ["macho"]
-
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies.object]
-version = "0.36.7"
-default-features = false
-features = ["elf"]
-
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+# No need to build multiple targets, the docs are all the same.
+targets = []
+cargo-args = ["--document-private-items"]

@@ -38,6 +38,5 @@ optional = true
 workspace = true
 
 [package.metadata.docs.rs]
-all-features = true
 # No need to build multiple targets, the docs are all the same.
 targets = []

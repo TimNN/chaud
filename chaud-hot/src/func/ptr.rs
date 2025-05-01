@@ -1,4 +1,4 @@
-use crate::FnPtr;
+use super::{FnPtrLike, Func};
 use core::ffi::c_void;
 use core::ptr::NonNull;
 use core::{fmt, mem, ptr};
@@ -15,12 +15,11 @@ pub struct ErasedFnPtr {
     /// See the [module][super#safety] docs:
     ///
     /// * Must never change.
-    /// * The actual type must be a function pointer implementing
-    ///   [`FnPtr`].
+    /// * The actual type must be a function pointer implementing [`FnPtrLike`].
     inner: NonNull<ErasedFnPtrPointee>,
 }
 
-// SAFETY: The actual type must imlement `FnPtr`, which requires `Send`.
+// SAFETY: The actual type must imlement `FnPtrLike`, which requires `Send`.
 unsafe impl Send for ErasedFnPtr {}
 
 // SAFETY: `ErasedFnPtr` is send and does not allow mutating access.
@@ -41,11 +40,11 @@ impl fmt::Debug for ErasedFnPtr {
 impl ErasedFnPtr {
     #[inline]
     #[must_use]
-    pub fn erase<F: FnPtr>(f: F) -> Self {
-        // SAFETY: `FnPtr` guarantees that `F` is a function pointer (and thus
-        // non-null). Aside from that, transmutes from function pointers to
-        // pointers are valid.
-        let inner = unsafe { transmute_copy_layout_checked::<F, NonNull<ErasedFnPtrPointee>>(f) };
+    pub(super) const fn erase<F: Func>(f: F::Ptr) -> Self {
+        // SAFETY: `F::Ptr` is a function pointer (and thus non-null). Aside
+        // from that, transmutes from function pointers to pointers are valid.
+        let inner =
+            unsafe { transmute_copy_layout_checked::<F::Ptr, NonNull<ErasedFnPtrPointee>>(f) };
 
         // SAFETY: Initializing does not count as a change, and the actual type
         // requirements are enforced or need to be upheld by the caller.
@@ -54,8 +53,8 @@ impl ErasedFnPtr {
 
     /// # Safety
     ///
-    /// The passed argument must be a function pointer implementing [`FnPtr`]
-    /// (and thus non-null).
+    /// The passed argument must be a function pointer implementing
+    /// [`FnPtrLike`] (and thus non-null).
     #[inline]
     #[must_use]
     pub(super) unsafe fn from_raw_never_null(raw: RawErasedFnPtr) -> Self {
@@ -70,10 +69,10 @@ impl ErasedFnPtr {
     /// # Safety
     ///
     /// The passed argument must either be `null`, or a function pointer
-    /// implementing [`FnPtr`].
+    /// implementing [`FnPtrLike`].
     #[inline]
     #[must_use]
-    pub unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
+    pub(super) unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
         let inner = NonNull::new(raw)?;
 
         // SAFETY: Initializing does not count as a change, and the actual type
@@ -83,7 +82,7 @@ impl ErasedFnPtr {
 
     #[inline]
     #[must_use]
-    pub fn raw(self) -> RawErasedFnPtr {
+    pub(super) const fn raw(self) -> RawErasedFnPtr {
         // SAFETY: `self` / `inner` are consumed by value, so `inner` does not
         // change.
         self.inner.as_ptr()
@@ -94,7 +93,7 @@ impl ErasedFnPtr {
     /// `F` must be the actual type of `self`.
     #[inline]
     #[must_use]
-    pub(super) unsafe fn typed<F: FnPtr>(self) -> F {
+    pub(super) unsafe fn typed<F: FnPtrLike>(self) -> F {
         // SAFETY: The caller must ensure that `F` is the actual type of `self`,
         // thus transmuting the pointer back to a F (which must be a function
         // pointer) is valid.
@@ -110,7 +109,7 @@ impl ErasedFnPtr {
 /// # Safety
 ///
 /// See [`transmute_copy`][mem::transmute_copy].
-unsafe fn transmute_copy_layout_checked<Src: Copy, Dst: Copy>(src: Src) -> Dst {
+const unsafe fn transmute_copy_layout_checked<Src: Copy, Dst: Copy>(src: Src) -> Dst {
     const {
         assert!(size_of::<Src>() == size_of::<Dst>());
         assert!(align_of::<Src>() == align_of::<Dst>());

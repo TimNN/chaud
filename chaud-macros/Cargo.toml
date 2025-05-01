@@ -13,3 +13,7 @@ unsafe-hot-reload = []
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+# No need to build multiple targets, the docs are all the same.
+targets = []

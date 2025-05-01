@@ -1,6 +1,6 @@
 use crate::factory::*;
 use crate::input::Input;
-use proc_macro::{Ident, TokenStream};
+use proc_macro::TokenStream;
 
 impl Input {
     fn inline(&self) -> TokenStream {
@@ -22,6 +22,16 @@ impl Input {
         ]
     }
 
+    fn name(&self) -> TokenStream {
+        tokens![
+            @"concat!",
+            paren![
+                @r#"module_path!(), "::", stringify!"#,
+                paren![&self.name]
+            ]
+        ]
+    }
+
     fn id(&self) -> TokenStream {
         tokens![
             @"concat!",
@@ -38,10 +48,6 @@ impl Input {
 
     fn arg_pats(&self) -> impl Iterator<Item = TokenStream> {
         self.args.iter().map(|a| a.pat.clone())
-    }
-
-    fn arg_idents(&self) -> impl Iterator<Item = Ident> {
-        self.args.iter().enumerate().map(|(i, _)| ident!("p{i}"))
     }
 
     fn arg_idents_outer(&self) -> impl Iterator<Item = TokenStream> {
@@ -111,8 +117,8 @@ fn hot(input: &Input) -> TokenStream {
             &input.ret,
             @;,
 
-            @"const ID: &'static str =",
-            input.id(),
+            @"const NAME: &'static str =",
+            input.name(),
             @;,
 
             @"const actual: Self::Ptr = ",
@@ -120,29 +126,21 @@ fn hot(input: &Input) -> TokenStream {
             sep(',', input.arg_pats()),
             @|,
             brace![&input.body],
-            @;,
-
-            @"const init: Self::Ptr = ",
-            @|,
-            sep(',', input.arg_idents()),
-            @|,
-            brace![
-                @"__chaud_FUNC.init()",
-                paren![sep(',', input.arg_idents())]
-            ],
-            @;,
-
-            @"const jump: Self::Ptr = ",
-            @|,
-            sep(',', input.arg_idents()),
-            @|,
-            brace![
-                @"__chaud_FUNC.get()",
-                paren![sep(',', input.arg_idents())]
-            ],
             @;
         ],
 
+        if input.reload { storage_ref(input) } else { storage_def(input) },
+
+        // Trigger a rebuild when `__CHAUD_RELOAD` changes.
+        @r#"const _: () = { ::core::option_env!("__CHAUD_RELOAD"); };"#,
+
+        @"__chaud_FUNC.get()",
+        paren![sep(',', input.arg_idents_outer())]
+    ]
+}
+
+fn storage_def(input: &Input) -> TokenStream {
+    tokens![
         // SAFETY: The user must ensure that no conflicting `export_name`s are
         // being generated. This is covered under the `unsafe-hot-reload`
         // feature opt-in.
@@ -151,10 +149,28 @@ fn hot(input: &Input) -> TokenStream {
             @=,
             input.id()
         ]],
-        @"static __chaud_FUNC: ::chaud::__internal::AtomicFunc<__chaud_func>",
-        @" = ::chaud::__internal::AtomicFunc::new();",
+        @"static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>",
+        @" = ::chaud::__internal::FuncStorage::new();"
+    ]
+}
 
-        @"__chaud_FUNC.get()",
-        paren![sep(',', input.arg_idents_outer())]
+fn storage_ref(input: &Input) -> TokenStream {
+    tokens![
+        // SAFETY: The user must ensure that the type of the function is the
+        // same as during the original compilation. This is covered under the
+        // `unsafe-hot-reload` feature opt-in.
+        @r#"unsafe extern "C""#,
+        brace![
+            attr![@link_name, @=, input.id()],
+            @"safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;"
+        ],
+        @"
+            ::chaud::__internal::ctor! {
+                #[ctor]
+                fn __chaud__reload() {
+                    __chaud_FUNC.update();
+                }
+            }
+        "
     ]
 }
