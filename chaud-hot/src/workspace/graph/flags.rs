@@ -1,4 +1,4 @@
-use crate::hot::util::relaxed::RelaxedU8;
+use crate::util::relaxed::RelaxedU8;
 use core::cmp;
 
 const DIRTY_BIT: u8 = 0b01;

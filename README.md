@@ -65,15 +65,29 @@ logging as the only real option for reporting any errors. The
 [`log`](https://docs.rs/log) crate is used for that purpose.
 
 Many things can go wrong while hot-reloading, so to avoid any confusion it is
-important that you enable logging for Chaud at least at the "warn" level.
+important that you enable logging for Chaud at least at the **`warn`** level.
 
 If you do not configure any logger, Chaud will install a simple one (which
 prints to stderr) for you.
 
-If you do configure your own logger, but do not enable at least the "warn" level
-for Chaud, Chaud will print a single message to stderr complaining about that
-fact. (You can disable this behavior with the `silence-log-level-warning`
+If you do configure your own logger, but do not enable at least the **`warn`**
+level for Chaud, Chaud will print a single message to stderr complaining about
+that fact. (You can disable this behavior with the `silence-log-level-warning`
 feature).
+
+### Log Levels
+
+- **`error`**: Unrecoverable errors, hot-reloading will not work
+- **`warn`**: Potentially recoverable errors, hot-reloading likely won't work
+  correctly
+- **`info`**: High-level messages about what Chaud is doing
+  - Enable this to know approximately what Chaud is doing.
+- **`debug`**: Detailed messages about what Chaud is doing
+  - Mostly irrelevant, unless you are interested in Chaud's internal operations.
+  - Log volume should be low enough to leave this permanently enabled.
+- **`trace`**: Verbose messages to aid in debugging
+  - Log volume can be quite high.
+  - I recommend only enabling this when Chaud isn't working as expected.
 
 ## Setup
 

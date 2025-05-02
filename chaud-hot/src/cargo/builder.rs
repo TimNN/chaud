@@ -5,12 +5,13 @@ use camino::Utf8PathBuf;
 use hashbrown::HashSet;
 use nanoserde::DeJson;
 use shlex::Shlex;
+use std::io;
 use std::process::{Command, Stdio};
 
 pub struct Builder {
     cmd: Command,
-    loaded_libs: HashSet<Utf8PathBuf>,
-    latest_libs: Vec<Utf8PathBuf>,
+    loaded: HashSet<Utf8PathBuf>,
+    latest: Vec<Utf8PathBuf>,
 }
 
 impl Builder {
@@ -19,8 +20,8 @@ impl Builder {
     }
 
     pub fn mark_latest_as_loaded(&mut self) {
-        for l in self.latest_libs.drain(..) {
-            let inserted = self.loaded_libs.insert(l);
+        for l in self.latest.drain(..) {
+            let inserted = self.loaded.insert(l);
             debug_assert!(inserted);
         }
     }
@@ -32,11 +33,7 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
     let mut cmd = cargo_cmd(env.flags());
     cmd.args(["--", "--print=link-args"]);
 
-    let mut builder = Builder {
-        cmd,
-        loaded_libs: HashSet::new(),
-        latest_libs: vec![],
-    };
+    let mut builder = Builder { cmd, loaded: HashSet::new(), latest: vec![] };
 
     extract_libs(&mut builder, true).context("Failed to get original rlibs")?;
     builder.mark_latest_as_loaded();
@@ -50,10 +47,19 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
 
     extract_libs(&mut builder, false).context("Failed to get reload rlibs")?;
 
-    if !builder.latest_libs.is_empty() {
-        log::warn!("RELOAD CHECK FAILED: Initial reload build unexpected found new rlibs");
-        builder.mark_latest_as_loaded();
+    // This may find new objects, ignore them for now.
+    if builder.latest.iter().any(|p| p.extension() == Some("rlib")) {
+        log::warn!("RELOAD CHECK FAILED: Initial reload build unexpectedly found new rlibs");
     }
+    builder.mark_latest_as_loaded();
+
+    extract_libs(&mut builder, false).context("Failed to get reload rlibs")?;
+
+    // There shouldn't even be new objects this time.
+    if !builder.latest.is_empty() {
+        log::warn!("RELOAD CHECK FAILED: Second reload build unexpectedly found new rlibs");
+    }
+    builder.mark_latest_as_loaded();
 
     Ok(builder)
 }
@@ -101,7 +107,7 @@ fn extract_libs(builder: &mut Builder, mut warn_dead: bool) -> Result<()> {
         return Ok(());
     }
 
-    builder.latest_libs.clear();
+    builder.latest.clear();
     let mut parts = Shlex::new(output);
 
     for part in &mut parts {
@@ -110,7 +116,10 @@ fn extract_libs(builder: &mut Builder, mut warn_dead: bool) -> Result<()> {
             log::warn!("DEAD CODE CHECK FAILED: `-Clink-dead-code` likely not set");
         }
 
-        if !part.ends_with(".rlib") {
+        let is_rlib = part.ends_with(".rlib");
+        let is_obj = part.ends_with(".o");
+
+        if !is_rlib && !is_obj {
             continue;
         }
 
@@ -118,18 +127,22 @@ fn extract_libs(builder: &mut Builder, mut warn_dead: bool) -> Result<()> {
 
         match part.metadata() {
             Ok(m) if m.is_file() => {}
+            Err(e) if is_obj && e.kind() == io::ErrorKind::NotFound => {
+                log::trace!("Ignoring missing obj {part:?}");
+                continue;
+            }
             _ => {
                 log::warn!("Ignoring invalid rlib {part:?}");
                 continue;
             }
         }
 
-        if !builder.loaded_libs.contains(&part) {
-            builder.latest_libs.push(part);
+        if !builder.loaded.contains(&part) {
+            builder.latest.push(part);
         }
     }
 
-    log::trace!("Found {} new rlibs", builder.latest_libs.len());
+    log::debug!("Found {} new rlibs", builder.latest.len());
 
     Ok(())
 }

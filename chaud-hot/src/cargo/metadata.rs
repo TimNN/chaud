@@ -42,6 +42,12 @@ impl DeJson for ManifestPath {
     }
 }
 
+impl ManifestPath {
+    pub fn path(&self) -> &Utf8Path {
+        &self.0
+    }
+}
+
 impl Package {
     pub fn name(&self) -> &PackageName {
         &self.name
@@ -123,14 +129,14 @@ impl DeJson for DependencyKind {
 
 #[derive(Debug, DeJson)]
 pub struct Target {
-    name: String,
+    name: TargetName,
     kind: Vec<TargetKind>,
     #[nserde(proxy = "String")]
     src_path: Utf8PathBuf,
 }
 
 impl Target {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &TargetName {
         &self.name
     }
 
@@ -140,6 +146,22 @@ impl Target {
 
     pub fn src_path(&self) -> &Utf8Path {
         &self.src_path
+    }
+}
+
+#[derive(Debug, DeJson, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[nserde(transparent)]
+pub struct TargetName(String);
+
+impl PartialEq<str> for TargetName {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl TargetName {
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
