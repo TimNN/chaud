@@ -1,11 +1,10 @@
-use crate::hot::util::CommandExt as _;
+use crate::util::CommandExt as _;
 use anyhow::{Context as _, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
 use core::str::Chars;
 use nanoserde::{DeJson, DeJsonErr, DeJsonState, DeJsonTok};
 use std::borrow::Cow;
-use std::env::consts::{DLL_EXTENSION, DLL_PREFIX};
 use std::process::{Command, Stdio};
 
 #[derive(Debug, DeJson)]
@@ -28,10 +27,19 @@ impl Metadata {
 pub struct Package {
     name: PackageName,
     version: String,
-    #[nserde(proxy = "String")]
-    manifest_path: Utf8PathBuf,
+    manifest_path: ManifestPath,
     dependencies: Vec<Dependency>,
     targets: Vec<Target>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ManifestPath(Utf8PathBuf);
+
+impl DeJson for ManifestPath {
+    fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
+        s.string(i)?;
+        Ok(ManifestPath(s.strbuf.clone().into()))
+    }
 }
 
 impl Package {
@@ -43,7 +51,7 @@ impl Package {
         &self.version
     }
 
-    pub fn manifest_path(&self) -> &Utf8Path {
+    pub fn manifest_path(&self) -> &ManifestPath {
         &self.manifest_path
     }
 
@@ -95,6 +103,7 @@ impl Dependency {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DependencyKind {
     Normal,
+    Build,
     Other,
 }
 
@@ -105,18 +114,26 @@ impl DeJson for DependencyKind {
             return Ok(Self::Normal);
         }
         s.string(i)?;
-        Ok(Self::Other)
+        match s.strbuf.as_ref() {
+            "build" => Ok(Self::Build),
+            _ => Ok(Self::Other),
+        }
     }
 }
 
 #[derive(Debug, DeJson)]
 pub struct Target {
+    name: String,
     kind: Vec<TargetKind>,
     #[nserde(proxy = "String")]
     src_path: Utf8PathBuf,
 }
 
 impl Target {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn kind(&self) -> &[TargetKind] {
         &self.kind
     }
@@ -146,21 +163,15 @@ impl<'a> KrateName<'a> {
     pub fn borrowed(name: &'a str) -> KrateName<'a> {
         Self(Cow::Borrowed(name))
     }
-
-    pub fn rlib_file_name(&self) -> String {
-        format!("lib{}.rlib", self.0)
-    }
-
-    pub fn dylib_file_name_versioned(&self, version: u32) -> String {
-        format!("{DLL_PREFIX}{}.{}.{DLL_EXTENSION}", self.0, version)
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TargetKind {
+    Bin,
     Lib,
     RLib,
     CustomBuild,
+    ProcMacro,
     Other,
 }
 
@@ -168,9 +179,11 @@ impl DeJson for TargetKind {
     fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
         s.string(i)?;
         match s.strbuf.as_ref() {
+            "bin" => Ok(Self::Bin),
             "lib" => Ok(Self::Lib),
             "rlib" => Ok(Self::RLib),
             "custom-build" => Ok(Self::CustomBuild),
+            "proc-macro" => Ok(Self::ProcMacro),
             _ => Ok(Self::Other),
         }
     }

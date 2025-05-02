@@ -1,5 +1,5 @@
-use crate::hot::cargo::metadata::{KrateName, Package, PackageName};
-use crate::hot::util::CfgInto as _;
+use crate::cargo::metadata::{KrateName, ManifestPath, Package, PackageName};
+use crate::util::CfgInto as _;
 use anyhow::{Context as _, Result, bail};
 use hashbrown::{HashMap, hash_map};
 
@@ -20,25 +20,32 @@ impl KrateIdx {
 pub struct KrateIndex {
     by_pkg: HashMap<PackageName, KrateIdx>,
     by_krate: HashMap<KrateName<'static>, KrateIdx>,
+    by_mani: HashMap<ManifestPath, KrateIdx>,
 }
 
 impl KrateIndex {
     pub fn new(pkgs: &[Package]) -> Result<Self> {
-        let mut names: Vec<_> = pkgs.iter().map(|p| p.name().clone()).collect();
+        let mut pkgs: Vec<_> = pkgs.iter().collect();
         // Do not depend on Cargo's output order for determinism.
-        names.sort_unstable();
+        pkgs.sort_unstable_by_key(|p| p.name());
 
-        let mut this = Self { by_pkg: HashMap::new(), by_krate: HashMap::new() };
+        let mut this = Self {
+            by_pkg: HashMap::new(),
+            by_krate: HashMap::new(),
+            by_mani: HashMap::new(),
+        };
 
-        for name in names {
-            this.insert(name).context("Failed to build package index")?;
+        for pkg in pkgs {
+            this.insert(pkg).context("Failed to build package index")?;
         }
 
         Ok(this)
     }
 
-    fn insert(&mut self, pkg_name: PackageName) -> Result<()> {
+    fn insert(&mut self, pkg: &Package) -> Result<()> {
+        let pkg_name = pkg.name().clone();
         let krate_name = pkg_name.to_krate();
+        let mani = pkg.manifest_path().clone();
 
         let next = KrateIdx(
             self.by_pkg
@@ -57,6 +64,11 @@ impl KrateIndex {
             hash_map::Entry::Vacant(entry) => entry.insert(next),
         };
 
+        match self.by_mani.entry(mani) {
+            hash_map::Entry::Occupied(entry) => bail!("Duplicate manifest: {:?}", entry.key()),
+            hash_map::Entry::Vacant(entry) => entry.insert(next),
+        };
+
         Ok(())
     }
 
@@ -66,5 +78,9 @@ impl KrateIndex {
 
     pub fn get_krate(&self, name: &KrateName<'_>) -> Option<KrateIdx> {
         self.by_krate.get(name).copied()
+    }
+
+    pub fn get_mani(&self, mani: &ManifestPath) -> Option<KrateIdx> {
+        self.by_mani.get(mani).copied()
     }
 }

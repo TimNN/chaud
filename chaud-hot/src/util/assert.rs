@@ -1,5 +1,6 @@
 //! Assertions that return an error instead of panicking.
 
+#[macro_export]
 macro_rules! _err_assert {
     ($cond:expr) => {{
         let caller = core::panic::Location::caller();
@@ -13,8 +14,9 @@ macro_rules! _err_assert {
         )
     }};
 }
-pub(crate) use _err_assert as err_assert;
+pub use _err_assert as err_assert;
 
+#[macro_export]
 macro_rules! _err_unreachable {
     () => {{
         let caller = core::panic::Location::caller();
@@ -22,4 +24,4 @@ macro_rules! _err_unreachable {
         anyhow::bail!("unreachable ({}:{})", caller.file(), caller.line())
     }};
 }
-pub(crate) use _err_unreachable as err_unreachable;
+pub use _err_unreachable as err_unreachable;

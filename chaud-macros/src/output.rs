@@ -159,7 +159,7 @@ fn storage_ref(input: &Input) -> TokenStream {
         // SAFETY: The user must ensure that the type of the function is the
         // same as during the original compilation. This is covered under the
         // `unsafe-hot-reload` feature opt-in.
-        @r#"unsafe extern "C""#,
+        @r#"unsafe extern "Rust""#,
         brace![
             attr![@link_name, @=, input.id()],
             @"safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;"
