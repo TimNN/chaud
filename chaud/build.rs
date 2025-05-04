@@ -11,24 +11,13 @@ blockquote {
 </style>
 ";
 
-static DOCTEST_HEADER: &str = r"
-```no_run
-# mod some_other_crate {
-#   pub fn do_something() -> u32 { 42 }
-# }
-#";
-
 fn main() -> Result<(), Box<dyn Error>> {
     let mut readme = fs::read_to_string("README.md")?;
 
     readme = readme.replace("[!CAUTION]", "**Caution:**");
 
-    readme = readme.replace("```rust", DOCTEST_HEADER);
-
-    readme = readme.replace(
-        "(https://docs.rs/chaud/latest/chaud/struct.Handle.html)",
-        "",
-    );
+    readme = readme.replace("```rust <!--no_run-->", "```rust,no_run");
+    readme = readme.replace("```rust <!--ignore-->", "```rust,ignore");
 
     readme.truncate(
         readme

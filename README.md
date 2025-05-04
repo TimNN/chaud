@@ -12,41 +12,50 @@
 [<img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rust-lang/regex/ci.yml?style=for-the-badge" height="20">](https://github.com/TimNN/chaud/actions/workflows/ci.yml)
 
 _Chaud_ (French for "hot") is a hot-reloading library for Cargo workspaces
-designed for ease of use.
+designed for ease of use. [Unix only](#platform-support).
 
-```rust
-use chaud::handle;
+```rust <!--no_run-->
+use std::sync::atomic::{AtomicU32, Ordering};
+
+// Statics annotated with `persist` will keep their value, even if the crate
+// is hot-reloaded.
+#[chaud::persist]
+static STATE: AtomicU32 = AtomicU32::new(0);
+
+// Functions annotated with `hot` will be hot-reloaded, and use the latest
+// available version every time they are called.
+#[chaud::hot]
+fn do_something() -> u32 {
+    STATE.fetch_add(1, Ordering::Relaxed)
+}
 
 fn main() {
-    // Create a handle to a function defined in some other crate
-    // in the workspace.
-    let handle = handle!(some_other_crate::do_something);
-
     loop {
-        // Retrieve the latest version of the handle, and call it.
-        let something = handle.get()();
-        println!("Something: {something}");
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        println!("Something: {}", do_something());
+        std::thread::sleep(std::time::Duration::from_secs(2));
     }
 }
 ```
 
-That's it. [`Handle`](https://docs.rs/chaud/latest/chaud/struct.Handle.html) is
-the entire API. You'll need to do a small amount of [setup](#setup), but aside
-from that, Chaud takes care of everything:
+Unless the relevant Cargo feature is enabled, the `#[chaud::*]` macros are
+essentially no-ops (and can thus be present even in production code). Check the
+[documentation](https://docs.rs/chaud) for details on the syntax supported by
+the macros.
 
-- In _production mode_ (the default) Chaud is an entirely safe wrapper around
-  normal function pointers.
-  - Chaud is built with `#[forbid(unsafe_code)]` in this configuration and does
-    not have any dependencies.
-  - This way, in most cases, you do not need to distinghuish between
-    "hot-reloading enabled" and "hot-reloading disabled" in your code.
-- In _development mode_ (enabled via the `unsafe-hot-reload` feature), Chaud
-  automatically does everything necessary to hot-reload your code:
-  - It determines which crates in your workspace need to be tracked.
-  - It watches the filesystem for changes to those crates.
-  - It rebuilds the affected crates when changes are detected.
-  - It reload any modified libraries and updates the corresponding handles.
+Enabling the `unsafe-hot-reload` feature will rewrite the items annotated with
+`#[chaud::*]` so that they can be hot-reloaded. Then, once you call
+`chaud::init()`, Chaud does everything necessary to hot-reload your code:
+
+- It determines which crates in your workspace need to be watched.
+- It watches the filesystem for changes to those crates.
+- It rebuilds the affected crates when changes are detected.
+- It reloads any modified libraries, updating all `#[chaud::hot]` functions to
+  their latest version.
+
+This requires some specific linker features to work, which need to be
+[configured](#setup) and are [not supported](#platform-support) on Windows.
+
+See [How It Works](#how-it-works) if you are curios about the details.
 
 <!-- prettier-ignore -->
 > [!CAUTION]
@@ -55,8 +64,106 @@ from that, Chaud takes care of everything:
 > Care was taken when writing the unsafe code in Chaud itself, but at this point
 > it has not been audited by any (community) experts.
 >
-> Chaud is still experimental and needs more extensive testing, especially on
-> platforms other than macOS.
+> Chaud is still experimental and needs more extensive testing, especially in
+> non-standard linking scenarios and on platforms other than macOS.
+
+## Platform Support
+
+Chaud is tested on `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu` via CI.
+Other Unix platforms are expected to work as well, unless their linkers differ
+significantly from the Linux linker, in which case Chaud may require
+platform-specific support.
+
+Windows is not supported, because as far as I could tell it is not (easily)
+possible to create DLLs with undefined symbols.
+
+Chaud is tested on `stable`, `beta` and `nightly`. However, it requires some
+unstable `rustc` flags to operate properly), and generally depends on `rustc`
+implementation details that could change at any time.
+
+## Setup
+
+Add `chaud` as a dependency to your application and call `chaud::init()` during
+your startup process (after you have configured [logging](#logging)).
+
+`chaud` must be a dependency of the crate that contains your `fn main`, so that
+its features can be enabled with the `--features chaud/<feature name>` flag.
+
+The easiest way to actually enabled hot-reloading is via
+`cargo install chaud-cli`. This enabled the `cargo chaud` and `chaud-rustc`
+integrations.
+
+### `cargo chaud`
+
+`cargo chaud` takes the same arguments as `cargo run`, but automatically does
+everything necessary to enable hot-reloading.
+
+### `chaud-rustc`
+
+If you cannot use `cargo chaud` (e.g. because `cargo` is invoked by some other
+build tool), you can instead set `RUSTC_WRAPPER=chaud-rustc` to get most of the
+same benefits.
+
+`chaud-rustc` will automatically add the necessary `rustc` flags when it detect
+compilation of a binary that has hot-reloading enabled.
+
+You still need to manually enable hot-reloading by enabling Chaud's
+`unsafe-hot-reload` feature.
+
+It may also be necessary to set the `CHAUD_BUILD_FLAGS` environment variable,
+see the next section.
+
+### Manual Setup
+
+- As when using `chaud-rustc`, you must enable the `unsafe-hot-reload` feature
+  to actually enabled hot-reloading.
+
+- To ensure that everything is linked correcty, you must pass the
+  `-Clink-dead-code -Zpre-link-args=<platform specific>` flags to `rustc` when
+  it links your application. This is often accomplished via the `RUSTFLAGS`
+  environment variable. The `<platform specifci>` part is:
+
+  - On macOS: `-Wl,-all_load`
+  - On Linux: `-Wl,--whole-archive`
+
+- If you are not using `nightly`, you must set `RUSTC_BOOTSTRAP=1` to use the
+  `-Z` flag.
+
+- Optionally, if Chaud fails to correctly detect the Cargo build flags, you can
+  set the `CHAUD_BUILD_FLAGS` variable to override Chaud's automatic detection.
+
+## Cleanup
+
+Chaud will [modify](#how-it-works) the `package.version` field of crates that
+are edited while hot-reloading is enabled.
+
+`cargo chaud cleanup` will undo those changes, though you can also undo them
+manually.
+
+## Safety
+
+Hot-reloading is fundamentally unsafe. By enabling the `unsafe-hot-reload`
+feature, you acknowledge and accept the associated risks.
+
+The following is an incomplete list of things to keep in mind:
+
+- The following crates will be hot-reloaded:
+  - Any crate in the workspace that you edit (and all crates that depend on it).
+  - Any crate with a (transitive) dependency on Chaud (even if you do not edit
+    it).
+- Do not change the definition of any types that persist across hot-reloads.
+- Do not apply Chaud's macros to items with the same name in the same module.
+  - Items with the same name in different modules / crates are fine.
+- `static`s defined in hot-reloaded crates will be duplicated, unless they are
+  annotated with `#[chaud::persist]`.
+- Thread local variables in crates that are hot-reloaded are not supported. It's
+  possible that they work (in which case they would still be duplicated), but
+  that's not guaranteed.
+- Hot-reloaded code only becomes active once a function annotated with
+  `#[chaud::hot]` is called. If such a function is never called, old code will
+  keep running indefinitely.
+- Function pointers and trait objects are some ways in which old code can
+  continue to run even after a hot-reload.
 
 ## Logging
 
@@ -89,20 +196,112 @@ feature).
   - Log volume can be quite high.
   - I recommend only enabling this when Chaud isn't working as expected.
 
-## Setup
+## Troubleshooting
 
-## Safety
+Carefully read all `warn` messages logged by Chaud, they may be able to point
+out what the problem is.
 
-## Panics
+If that doesn't help, then feel free to open an issue and I'll do my best to
+help. Please include `trace` logs for `chaud`.
 
-In _production mode_ Chaud never panics or fails.
+To debug issues with undefined symbols, compiling with
+`-Csymbol-mangling-version=v0` can be useful because it include more information
+in the symbol name.
 
-In _development mode_ Chaud avoids panicking, and instead disables relevant
-functionality if an unrecoverable error occurs.
+## How It Works
 
-There is no guarantee that a panic will never occur, but a panic is considered a
-bug. You can reduce the risk of panics by turning off debug assertions for
-Chaud.
+- During the initial compilation with the `unsafe-hot-reload` feature enabled,
+  Chaud generates code similar to the following:
+
+  ```rust <!--ignore-->
+  // For `#[chaud::hot]`:
+  fn do_something(args) {
+    #[chaud::persist]
+    static __chaud_FUNC: AtomicFnPtr = AtomicFnPtr::new(actual_fn);
+
+    __chaud_FUNC.get()(args)
+  }
+
+  // For `#[chaud::persist]`:
+  #[export_name = "_CHAUD::module::path::STATE"]
+  static STATE: Whatever = Whatever::new();
+  ```
+
+  The `hot` macro stores a function pointer to the actual implementation in an
+  atomic `static`, and just calls the latest value of the atomic every time.
+
+  The `persist` macro gives that `static` a non-mangled name that never changes.
+
+- The `-Clink-dead-code -Zpre-link-args=..` flags are necessary to avoid
+  problems with undefined symbols:
+
+  - `-Clink-dead-code` disables dead-code stripping (which Rust otherwise
+    enables by default).
+  - `-Zpre-link-args=...` causes the linker to include all symbols from static
+    libraries in the final artifact, even if they are completely unused.
+    - Without this, hot-reloaded code would be unable to use any function from a
+      dependency that wasn't already being used by the original code.
+
+- `chaud::init()` isn't particulary intersting. It spawns a background thread
+  that:
+
+  - Runs `cargo metadata` to understand the structure of the workspace.
+  - Figures out the root crate and binary and all its workspace dependencies.
+  - Watches all those crates for changes.
+  - Rebuilds and reloads when changes are detected.
+
+- Now comes the part that makes all of this actually work: Before performing a
+  reload build, Chaud edits the manifest of all crates for which changes were
+  detected:
+
+  It adds a `chaud-<id>` part to the build metadata of the crates version,
+  producing versions like `1.2.3+chaud-4`. This causes Cargo to generate a new
+  value for the `-C metadata=` flag passed to `rustc` for that crate and all
+  crates that depend on it.
+
+  This, in turn, changes the symbol names generated by `rustc`, so that all
+  symbol names in the reload build are different from all previously-loaded
+  symbols. (This probably wouldn't actually be necessary if all linkers
+  supported `RTLD_DEEPBIND`, but at least macOS does not).
+
+  It also changes the names of the output files generated by `rustc`.
+
+- A reload build enables both, the `unsafe-hot-reload` and the
+  `internal-is-reload` features. This changes the code generated by the macros:
+
+  ```rust <!--ignore-->
+  // For `#[chaud::hot]`:
+  fn do_something(args) {
+      #[chaud::persist]
+      static __chaud_FUNC: AtomicFnPtr = AtomicFnPtr::new(actual_fn);
+
+      // NEW:
+      ctor! { __chaud_FUNC.update(actual_fn) }
+
+      __chaud_FUNC.get()(args)
+  }
+
+  // For `#[chaud::persist]`:
+  unsafe extern "Rust" {
+      #[link_name = "_CHAUD::module::path::STATE"]
+      static STATE: Whatever;
+  }
+  ```
+
+  The `persist` macro changes the `static` to reference the one defined by the
+  initial compilation.
+
+  The `hot` macro now defines a [`ctor!`](https://docs.rs/ctor) that
+  automatically updates the function pointer stored in the atomic to the latest
+  version once the dynamic library containing it is loaded.
+
+- Since the `extern` `static`s would produce linker error, Chaud performs reload
+  builds with `-Clinker=true` and records the linker invocation via
+  `--print=link-args`.
+
+  From the linker invocation, it extracts the `rlib` and object files that
+  haven't been loaded yet, manually links them together into a dynamic library,
+  and then loads that library.
 
 <!-- readme-license-begin -->
 

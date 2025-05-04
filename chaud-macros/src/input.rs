@@ -39,6 +39,7 @@ pub struct Arg {
     pub ty: TokenStream,
 }
 
+#[allow(clippy::derivable_impls, reason = "false-positive due to cfg")]
 impl Default for CommonInput {
     fn default() -> Self {
         Self {

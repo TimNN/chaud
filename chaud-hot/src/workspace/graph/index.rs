@@ -15,8 +15,7 @@ impl KrateIdx {
     }
 }
 
-/// An index of all crates, mapping [`PackageName`]/[`ManifestPath`] to
-/// [`KrateIdx`].
+/// An index of all crates, mapping [`PackageName`] to [`KrateIdx`].
 pub struct KrateIndex {
     by_pkg: HashMap<PackageName, KrateIdx>,
 }

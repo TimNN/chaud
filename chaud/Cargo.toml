@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 description = '''
-A hot-reloading library for Cargo workspaces designed for ease of use.
+A hot-reloading library for Cargo workspaces designed for ease of use. Unix only.
 '''
 categories = ["development-tools"]
 keywords = ["hot-reloading"]
