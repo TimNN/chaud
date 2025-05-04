@@ -39,8 +39,16 @@ path = "../chaud-hot"
 version = "0.1"
 optional = true
 
+[[test]]
+name = "demo"
+harness = false
+
 [lints]
 workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+fs_extra = "1.3.0"
 
 [package.metadata.docs.rs]
 # No need to build multiple targets, the docs are all the same.

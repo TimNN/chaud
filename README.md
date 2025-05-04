@@ -232,6 +232,9 @@ in the symbol name.
 
   The `persist` macro gives that `static` a non-mangled name that never changes.
 
+  To see the full expansion, check out the `expanded_*.rs` files in the `/demo/`
+  directory.
+
 - The `-Clink-dead-code -Zpre-link-args=..` flags are necessary to avoid
   problems with undefined symbols:
 

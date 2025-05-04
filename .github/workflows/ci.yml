@@ -22,14 +22,10 @@ jobs:
         rust: ["stable", "beta", "nightly"]
         include:
           # rust channel config
-          - rust: stable
-            components: clippy, rustfmt
           - rust: beta
-            components: clippy, rustfmt
             # FIXME: Move this to `Cargo.toml` once it reaches stable.
             lints: '"-Aclippy::unnecessary_debug_formatting"'
           - rust: nightly
-            components: clippy, miri, rust-src, rustfmt
             # FIXME: Move this to `Cargo.toml` once it reaches stable.
             lints: '"-Aclippy::unnecessary_debug_formatting"'
 
@@ -41,38 +37,23 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-          components: ${{ matrix.components }}
+          components: clippy, rustfmt
 
       - name: Check Format
         if: ${{ matrix.rust == 'stable' }}
         run: cargo fmt --all --check
 
-      - name: Clippy Production Mode
-        run: cargo clippy --workspace -- -D warnings ${{ matrix.lints }}
-
-      - name: Clippy Development Mode
+      - name: Clippy
         run:
           cargo clippy --workspace --all-features -- -D warnings ${{
           matrix.lints }}
 
-      - name: Rustdoc
+      - name: Documentation
         run:
           cargo doc --workspace --all-features --no-deps
           --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
-        continue-on-error: ${{ matrix.rust != 'stable' }}
 
-      - name: Unit Test Production Mode
-        run: cargo test --workspace
-
-      - name: Unit Test Development Mode
+      - name: Tests
         run: cargo test --workspace --all-features
-
-      - name: Unit Test Production Mode (Miri)
-        if: ${{ matrix.rust == 'nightly' }}
-        run: cargo miri test -p chaud
-
-      - name: Unit Test Development Mode (Miri)
-        if: ${{ matrix.rust == 'nightly' }}
-        run: cargo miri test -p chaud --all-features

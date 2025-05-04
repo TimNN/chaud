@@ -17,28 +17,28 @@ macro_rules! ident {
 }
 
 macro_rules! paren {
-    ($($t:tt)*) => {
+    [$($t:tt)*] => {
         ::proc_macro::Group::new(
             ::proc_macro::Delimiter::Parenthesis, tokens![$($t)*])
     }
 }
 
 macro_rules! brace {
-    ($($t:tt)*) => {
+    [$($t:tt)*] => {
         ::proc_macro::Group::new(
             ::proc_macro::Delimiter::Brace, tokens![$($t)*])
     }
 }
 
 macro_rules! bracket {
-    ($($t:tt)*) => {
+    [$($t:tt)*] => {
         ::proc_macro::Group::new(
             ::proc_macro::Delimiter::Bracket, tokens![$($t)*])
     }
 }
 
 macro_rules! attr {
-    ($($t:tt)*) => {
+    [$($t:tt)*] => {
         tokens![
             sym('#'),
             bracket![$($t)*]
@@ -185,8 +185,8 @@ macro_rules! token {
 }
 
 macro_rules! tokens {
-    () => { TokenStream::new() };
-    ($($(@$t:tt)?$($e:expr)?$(;;;$count:tt)?),*) => {{
+    [] => { TokenStream::new() };
+    [$($(@$t:tt)?$($e:expr)?$(;;;$count:tt)?),*] => {{
         <
             // `stringify` allows us to reference `$t` (to get the correct
             // repetition), so we can generate a `1` for each expression.

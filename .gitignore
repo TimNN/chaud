@@ -1,3 +1,7 @@
 /target/
 /Cargo.lock
 /.vscode/
+
+/demo/target/
+/demo/Cargo.lock
+/demo/.vscode/
