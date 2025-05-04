@@ -257,7 +257,7 @@ in the symbol name.
   reload build, Chaud edits the manifest of all crates for which changes were
   detected:
 
-  It adds a `chaud-<id>` part to the build metadata of the crates version,
+  It adds a `chaud-<id>` part to the build metadata part of the crate's version,
   producing versions like `1.2.3+chaud-4`. This causes Cargo to generate a new
   value for the `-C metadata=` flag passed to `rustc` for that crate and all
   crates that depend on it.
