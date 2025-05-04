@@ -1,15 +1,17 @@
 [package]
 name = "chaud-hot"
 version = "0.1.0"
-edition = "2024"
 
 readme = "README.md"
 license.workspace = true
 repository.workspace = true
 
-[features]
+description = "Implementation detail of Chaud."
 
-# FIXME: Document.
+edition = "2024"
+rust-version = "1.86"
+
+[features]
 silence-log-level-warning = []
 
 [dependencies]

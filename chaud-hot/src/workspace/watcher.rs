@@ -11,6 +11,7 @@ use std::path::Path;
 use std::time::Instant;
 
 pub struct Watcher {
+    #[expect(dead_code, reason = "keep alive")]
     inner: RecommendedWatcher,
     latest: LatestReader<Instant>,
 }

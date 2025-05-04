@@ -23,9 +23,6 @@ unimplemented = "warn"
 unreachable = "warn"
 unwrap_used = "forbid"
 
-# FIXME: re-enable
-# cargo = { level = "warn", priority = -1 }
-
 pedantic = { level = "warn", priority = -1 }
 bool_to_int_with_if = "allow"
 case_sensitive_file_extension_comparisons = "allow"

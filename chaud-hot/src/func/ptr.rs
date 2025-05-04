@@ -66,20 +66,6 @@ impl ErasedFnPtr {
         Self { inner }
     }
 
-    /// # Safety
-    ///
-    /// The passed argument must either be `null`, or a function pointer
-    /// implementing [`FnPtrLike`].
-    #[inline]
-    #[must_use]
-    pub(super) unsafe fn from_raw_maybe_null(raw: RawErasedFnPtr) -> Option<Self> {
-        let inner = NonNull::new(raw)?;
-
-        // SAFETY: Initializing does not count as a change, and the actual type
-        // requirements need to be upheld by the caller.
-        Some(Self { inner })
-    }
-
     #[inline]
     #[must_use]
     pub(super) const fn raw(self) -> RawErasedFnPtr {

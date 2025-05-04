@@ -9,8 +9,8 @@ repository.workspace = true
 description = '''
 A hot-reloading library for Cargo workspaces designed for ease of use.
 '''
-categories = ["hot-reloading"]
-keywords = ["development-tools"]
+categories = ["development-tools"]
+keywords = ["hot-reloading"]
 
 edition = "2024"
 rust-version = "1.86"
@@ -20,20 +20,23 @@ rust-version = "1.86"
 # Do not print a warning to stderr if logging is disabled for Chaud.
 #
 # See https://docs.rs/chaud#logging
-silence-log-level-warning = []
+silence-log-level-warning = ["chaud-hot?/silence-log-level-warning"]
 
 # Enable hot-reloading functionality.
 #
 # SAFETY: See https://docs.rs/chaud#safety
 unsafe-hot-reload = ["dep:chaud-hot", "chaud-macros/unsafe-hot-reload"]
 
+# Internal feature, do not use.
 internal-is-reload = ["chaud-macros/internal-is-reload"]
 
 [dependencies.chaud-macros]
 path = "../chaud-macros"
+version = "0.1"
 
 [dependencies.chaud-hot]
 path = "../chaud-hot"
+version = "0.1"
 optional = true
 
 [lints]

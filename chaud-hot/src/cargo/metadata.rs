@@ -4,7 +4,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
 use core::str::Chars;
 use nanoserde::{DeJson, DeJsonErr, DeJsonState, DeJsonTok};
-use std::borrow::Cow;
 use std::process::{Command, Stdio};
 
 #[derive(Debug, DeJson)]
@@ -73,16 +72,6 @@ impl Package {
 #[derive(Debug, DeJson, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[nserde(transparent)]
 pub struct PackageName(String);
-
-impl PackageName {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    pub fn to_krate(&self) -> KrateName<'static> {
-        KrateName(Cow::Owned(self.0.replace('-', "_")))
-    }
-}
 
 impl fmt::Display for PackageName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -162,28 +151,6 @@ impl PartialEq<str> for TargetName {
 impl TargetName {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct KrateName<'a>(Cow<'a, str>);
-
-impl DeJson for KrateName<'_> {
-    fn de_json(s: &mut DeJsonState, i: &mut Chars) -> Result<Self, DeJsonErr> {
-        s.string(i)?;
-        Ok(KrateName(Cow::Owned(s.strbuf.clone())))
-    }
-}
-
-impl fmt::Display for KrateName<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "`{}`", self.0)
-    }
-}
-
-impl<'a> KrateName<'a> {
-    pub fn borrowed(name: &'a str) -> KrateName<'a> {
-        Self(Cow::Borrowed(name))
     }
 }
 

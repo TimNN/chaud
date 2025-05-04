@@ -1,9 +1,17 @@
 [package]
 name = "chaud-macros"
 version = "0.1.0"
-edition = "2024"
+
+readme = "README.md"
 license.workspace = true
 repository.workspace = true
+
+description = "Implementation detail of Chaud."
+categories = []
+keywords = []
+
+edition = "2024"
+rust-version = "1.86"
 
 [lib]
 proc-macro = true

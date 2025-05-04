@@ -10,7 +10,6 @@ use std::collections::VecDeque;
 
 pub struct Graph {
     env: BuildEnv,
-    index: KrateIndex,
     krates: Box<[Krate]>,
 }
 
@@ -51,7 +50,7 @@ fn new_inner() -> Result<&'static Graph> {
     let env = BuildEnv::new(&meta, &index)?;
     let krates = load_krates(&meta, &env, &index)?;
 
-    Ok(Box::leak(Box::new(Graph { env, index, krates })))
+    Ok(Box::leak(Box::new(Graph { env, krates })))
 }
 
 fn load_krates(meta: &Metadata, env: &BuildEnv, index: &KrateIndex) -> Result<Box<[Krate]>> {

@@ -6,7 +6,8 @@
     clippy::indexing_slicing,
     clippy::enum_glob_use,
     clippy::expect_used,
-    clippy::panic
+    clippy::panic,
+    reason = "less restrictions on internal build-time dependencies"
 )]
 
 use self::err::Error;

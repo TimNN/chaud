@@ -1,7 +1,6 @@
 use super::{BuildEnv, ClearDirtyResult, KrateFlags, KrateIdx, KrateIndex};
 use crate::cargo::metadata::{
-    Dependency, DependencyKind, KrateName, ManifestPath, Package, PackageName, Target, TargetKind,
-    TargetName,
+    Dependency, DependencyKind, ManifestPath, Package, PackageName, Target, TargetKind, TargetName,
 };
 use crate::util::etx;
 use anyhow::{Context as _, Result, ensure};
@@ -26,7 +25,6 @@ impl KrateDir {
 pub struct Krate {
     idx: KrateIdx,
     pkg: PackageName,
-    name: KrateName<'static>,
     initial_version: String,
     mani: ManifestPath,
     deps: Box<[KrateIdx]>,
@@ -46,16 +44,8 @@ impl Krate {
             .with_context(etx!("Failed to build crate info for {}", pkg.name()))
     }
 
-    pub(super) fn pkg(&self) -> &PackageName {
-        &self.pkg
-    }
-
     pub fn idx(&self) -> KrateIdx {
         self.idx
-    }
-
-    pub(super) fn name(&self) -> &KrateName<'static> {
-        &self.name
     }
 
     pub fn initial_version(&self) -> &str {
@@ -102,7 +92,6 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
     let idx = index
         .get_pkg(&pkg)
         .context("Package not found in the index")?;
-    let name = pkg.to_krate();
 
     let initial_version = package.version().to_owned();
     let mani = package.manifest_path().to_owned();
@@ -118,7 +107,6 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
     Ok(Krate {
         idx,
         pkg,
-        name,
         initial_version,
         mani,
         deps,

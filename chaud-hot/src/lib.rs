@@ -4,7 +4,6 @@
     clippy::missing_errors_doc,
     reason = "this crate is an implementation detail, don't be as-strict"
 )]
-#![allow(dead_code, reason = "TODO: remove once module is fully in use")]
 
 #[doc(no_inline)]
 pub use self::func::{Func, FuncStorage};
