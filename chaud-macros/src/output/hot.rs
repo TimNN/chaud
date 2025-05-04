@@ -1,10 +1,10 @@
 use crate::factory::*;
-use crate::input::Input;
+use crate::input::{HotInput, PersistInput};
 use proc_macro::TokenStream;
 
-impl Input {
+impl HotInput {
     fn inline(&self) -> TokenStream {
-        if !self.hot {
+        if !self.common.hot {
             return TokenStream::new();
         }
 
@@ -32,16 +32,6 @@ impl Input {
         ]
     }
 
-    fn id(&self) -> TokenStream {
-        tokens![
-            @"concat!",
-            paren![
-                @r#""_CHAUD::", module_path!(), "::", stringify!"#,
-                paren![&self.name]
-            ]
-        ]
-    }
-
     fn arg_tys(&self) -> impl Iterator<Item = TokenStream> {
         self.args.iter().map(|a| a.ty.clone())
     }
@@ -64,7 +54,7 @@ impl Input {
         self.args.iter().enumerate().map(|(i, a)| {
             if self.is_method && i == 0 {
                 tokens![@self, @:, &a.ty]
-            } else if self.hot {
+            } else if self.common.hot {
                 tokens![ident!("p{i}"), @:, &a.ty]
             } else {
                 tokens![&a.pat, @:, &a.ty]
@@ -74,7 +64,7 @@ impl Input {
 
     fn self_fixup(&self) -> TokenStream {
         if !self.is_method {
-            return TokenStream::new();
+            return tokens![];
         }
 
         tokens![
@@ -85,9 +75,13 @@ impl Input {
             @;
         ]
     }
+
+    pub fn output(&self) -> TokenStream {
+        output(self)
+    }
 }
 
-pub fn output(input: &Input) -> TokenStream {
+fn output(input: &HotInput) -> TokenStream {
     tokens![
         &input.attrs,
         input.inline(),
@@ -97,14 +91,14 @@ pub fn output(input: &Input) -> TokenStream {
         &input.life,
         paren![sep(',', input.args_outer())],
         &input.ret,
-        brace![match input.hot {
+        brace![match input.common.hot {
             true => hot(input),
             false => tokens![input.self_fixup(), &input.body],
         }]
     ]
 }
 
-fn hot(input: &Input) -> TokenStream {
+fn hot(input: &HotInput) -> TokenStream {
     tokens![
         @"struct __chaud_func;",
         // SAFETY: `Self::Ptr` is a function pointer.
@@ -129,38 +123,34 @@ fn hot(input: &Input) -> TokenStream {
             @;
         ],
 
-        if input.reload { storage_ref(input) } else { storage_def(input) },
+        storage(input),
+        reload(input),
 
         @"__chaud_FUNC.get()",
         paren![sep(',', input.arg_idents_outer())]
     ]
 }
 
-fn storage_def(input: &Input) -> TokenStream {
-    tokens![
-        // SAFETY: The user must ensure that no conflicting `export_name`s are
-        // being generated. This is covered under the `unsafe-hot-reload`
-        // feature opt-in.
-        attr![@unsafe, paren![
-            @export_name,
-            @=,
-            input.id()
-        ]],
-        @"static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>",
-        @" = ::chaud::__internal::FuncStorage::new();"
-    ]
+fn storage(input: &HotInput) -> TokenStream {
+    let persist = PersistInput {
+        common: input.common,
+        attrs: tokens![],
+        vis: tokens![],
+        name: tokens![@__chaud_FUNC],
+        id: Some(input.name.clone()),
+        ty: tokens![@"::chaud::__internal::FuncStorage<__chaud_func>"],
+        init: tokens![@"::chaud::__internal::FuncStorage::new()"],
+    };
+
+    persist.output()
 }
 
-fn storage_ref(input: &Input) -> TokenStream {
+fn reload(input: &HotInput) -> TokenStream {
+    if !input.common.reload {
+        return tokens![];
+    }
+
     tokens![
-        // SAFETY: The user must ensure that the type of the function is the
-        // same as during the original compilation. This is covered under the
-        // `unsafe-hot-reload` feature opt-in.
-        @r#"unsafe extern "Rust""#,
-        brace![
-            attr![@link_name, @=, input.id()],
-            @"safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;"
-        ],
         @"
             ::chaud::__internal::ctor! {
                 #[ctor]

@@ -158,6 +158,18 @@ impl Parser {
     }
 
     #[expect(clippy::unnecessary_wraps, reason = "better composition")]
+    pub fn expr(&mut self) -> Result<()> {
+        while let Some(t) = self.peek() {
+            if sym(';').matches(t) || sym(',').matches(t) {
+                break;
+            }
+            self.next();
+        }
+
+        Ok(())
+    }
+
+    #[expect(clippy::unnecessary_wraps, reason = "better composition")]
     pub fn vis(&mut self) -> Result<()> {
         if self.maybe(kw("pub")) {
             self.maybe(paren_tree);

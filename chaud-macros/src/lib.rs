@@ -11,8 +11,7 @@
 )]
 
 use self::err::Error;
-use self::input::Input;
-use self::output::output;
+use self::input::{HotInput, PersistInput};
 use self::parse::Parser;
 use proc_macro::TokenStream;
 
@@ -27,15 +26,26 @@ mod input;
 mod output;
 mod parse;
 
-#[expect(clippy::needless_return)]
 #[proc_macro_attribute]
 pub fn hot(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut attr = Parser::new(attr);
     let mut p = Parser::new(item.clone());
 
-    return Error::reporting(item.clone(), || {
-        let input = Input::parse(&mut attr, &mut p)?;
+    Error::reporting(item.clone(), || {
+        let input = HotInput::parse(&mut attr, &mut p)?;
 
-        Ok(output(&input))
-    });
+        Ok(input.output())
+    })
+}
+
+#[proc_macro_attribute]
+pub fn persist(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut attr = Parser::new(attr);
+    let mut p = Parser::new(item.clone());
+
+    Error::reporting(item.clone(), || {
+        let input = PersistInput::parse(&mut attr, &mut p)?;
+
+        Ok(input.output())
+    })
 }

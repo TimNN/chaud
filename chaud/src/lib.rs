@@ -7,6 +7,8 @@ pub use chaud_hot as __internal;
 
 pub use chaud_macros::hot;
 
+pub use chaud_macros::persist;
+
 /// Initialize Chaud.
 ///
 /// When hot-reloading is **disabled**, this is a no-op.

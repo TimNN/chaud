@@ -3,16 +3,26 @@ use crate::expect::Expect::*;
 use crate::parse::Parser;
 use proc_macro::{Delimiter, TokenStream};
 
-#[derive(Debug, Default)]
-pub struct Arg {
-    pub pat: TokenStream,
-    pub ty: TokenStream,
+#[derive(Debug, Copy, Clone)]
+pub struct CommonInput {
+    pub hot: bool,
+    pub reload: bool,
 }
 
 #[derive(Debug, Default)]
-pub struct Input {
-    pub hot: bool,
-    pub reload: bool,
+pub struct PersistInput {
+    pub common: CommonInput,
+    pub attrs: TokenStream,
+    pub vis: TokenStream,
+    pub name: TokenStream,
+    pub id: Option<TokenStream>,
+    pub ty: TokenStream,
+    pub init: TokenStream,
+}
+
+#[derive(Debug, Default)]
+pub struct HotInput {
+    pub common: CommonInput,
     pub is_method: bool,
     pub attrs: TokenStream,
     pub vis: TokenStream,
@@ -23,11 +33,24 @@ pub struct Input {
     pub body: TokenStream,
 }
 
-impl Input {
+#[derive(Debug, Default)]
+pub struct Arg {
+    pub pat: TokenStream,
+    pub ty: TokenStream,
+}
+
+impl Default for CommonInput {
+    fn default() -> Self {
+        Self {
+            hot: cfg!(feature = "unsafe-hot-reload"),
+            reload: cfg!(feature = "internal-is-reload"),
+        }
+    }
+}
+
+impl HotInput {
     pub fn parse(attr: &mut Parser, p: &mut Parser) -> Result<Self> {
         let mut this = Self::default();
-        this.hot = cfg!(feature = "unsafe-hot-reload");
-        this.reload = cfg!(feature = "internal-is-reload");
 
         while !attr.is_eos() {
             match () {
@@ -84,6 +107,29 @@ impl Input {
             Ok(())
         })?;
 
+        p.expect_eos()?;
+
+        Ok(this)
+    }
+}
+
+impl PersistInput {
+    pub fn parse(attr: &mut Parser, p: &mut Parser) -> Result<Self> {
+        let mut this = Self::default();
+
+        if !attr.is_eos() {
+            attr.unexpected("Unsupported option")?;
+        }
+
+        this.attrs = p.maybe_attrs()?;
+        this.vis = p.collect(Parser::vis)?;
+        p.expect(kw("static"))?;
+        this.name = p.collect(Parser::ident)?;
+        p.expect(sym(':'))?;
+        this.ty = p.collect(|p| p.ty_until(sym('=')))?;
+        p.expect(sym('='))?;
+        this.init = p.collect(|p| p.expr())?;
+        p.expect(sym(';'))?;
         p.expect_eos()?;
 
         Ok(this)
