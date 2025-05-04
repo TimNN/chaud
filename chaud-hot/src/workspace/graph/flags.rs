@@ -17,7 +17,7 @@ pub struct KrateFlags {
     inner: RelaxedU8,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClearDirtyResult {
     Ok = 0,
     UnpatchedDirty = 1,

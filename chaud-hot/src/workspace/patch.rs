@@ -1,6 +1,6 @@
-use super::graph::{ClearDirtyResult, Graph, KrateData};
-use crate::hot::util::assert::err_assert;
-use crate::hot::util::etx;
+use super::graph::{ClearDirtyResult, Graph, Krate};
+use crate::util::assert::err_assert;
+use crate::util::etx;
 use anyhow::{Context as _, Result};
 use core::cmp;
 use std::borrow::Cow;
@@ -36,26 +36,32 @@ impl Graph {
     pub(super) fn clear_dirty_if_patched(&self) -> ClearDirtyResult {
         let mut res = ClearDirtyResult::Ok;
 
-        for krate in self.dylibs() {
+        for krate in self.krates() {
             res = krate.clear_dirty_if_patched().merge(res);
         }
 
         res
     }
 
-    fn krates_needing_patch(&self) -> impl Iterator<Item = &KrateData> {
-        self.dylibs().filter(|k| k.needs_patch())
+    pub(super) fn clear_patched(&self) {
+        for krate in self.krates() {
+            krate.clear_patched();
+        }
+    }
+
+    fn krates_needing_patch(&self) -> impl Iterator<Item = &Krate> {
+        self.krates().iter().filter(|k| k.needs_patch())
     }
 }
 
-fn patch_manifest(krate: &KrateData) -> Result<PatchResult> {
-    let paths = krate.expect_dylib_paths()?;
+fn patch_manifest(krate: &Krate) -> Result<PatchResult> {
+    let mani = krate.mani();
 
-    let buf = fs::read_to_string(paths.manifest_file())?;
+    let buf = fs::read_to_string(mani.path())?;
 
     let patched = apply_patch(krate.initial_version(), &buf)?;
 
-    fs::write(paths.manifest_file(), patched)?;
+    fs::write(mani.path(), patched)?;
 
     krate.mark_patched();
     Ok(PatchResult::PatchApplied)

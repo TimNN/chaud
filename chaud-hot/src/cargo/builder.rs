@@ -1,22 +1,50 @@
 use crate::util::CommandExt as _;
 use crate::workspace::graph::BuildEnv;
 use anyhow::{Context as _, Result, bail, ensure};
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
+use core::iter::Peekable;
 use hashbrown::HashSet;
 use nanoserde::DeJson;
-use shlex::Shlex;
 use std::io;
 use std::process::{Command, Stdio};
 
 pub struct Builder {
     cmd: Command,
+    linker: Linker,
     loaded: HashSet<Utf8PathBuf>,
     latest: Vec<Utf8PathBuf>,
+}
+
+struct Linker {
+    env_clear: Box<[String]>,
+    env_set: Box<[(String, String)]>,
+    bin: String,
+    arg_pre: Box<[String]>,
+    arg_post: Box<[String]>,
 }
 
 impl Builder {
     pub fn init(env: &BuildEnv) -> Result<Self> {
         init_inner(env).context("Failed to init Builder")
+    }
+
+    pub fn link_latest(&self, dst: &Utf8Path) -> Result<()> {
+        link(dst, &self.linker, &self.latest)
+    }
+
+    pub fn build(&mut self) -> Result<()> {
+        let parts = extract_link_args(&mut self.cmd).context("Build failed")?;
+
+        // We need to check this, because the linker args won't be re-printed for a
+        // fully fresh build, and we need to avoid clearing `latest_libs` in that
+        // case.
+        if parts.is_empty() {
+            log::trace!("Empty output, rlibs seem fresh");
+            return Ok(());
+        }
+
+        extract_libs(parts, &self.loaded, &mut self.latest);
+        Ok(())
     }
 
     pub fn mark_latest_as_loaded(&mut self) {
@@ -33,33 +61,26 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
     let mut cmd = cargo_cmd(env.flags());
     cmd.args(["--", "--print=link-args"]);
 
-    let mut builder = Builder { cmd, loaded: HashSet::new(), latest: vec![] };
+    let (linker, latest) = extract_linker(cmd).context("Failed to extract linker")?;
 
-    extract_libs(&mut builder, true).context("Failed to get original rlibs")?;
+    let mut cmd = cargo_cmd(env.flags());
+    cmd.args([
+        "--features",
+        "chaud/internal-is-reload",
+        "--",
+        "--print=link-args",
+        // With `__CHAUD_RELOAD` set, Chaud will generate references to symbols
+        // that only exist in the running binary (not in the newly compiled
+        // code). Using `true` as the linker ensures that the compilation still
+        // succeeds (and has the nice side-effect of avoiding unnecessary work).
+        "-Clinker=true",
+    ]);
+
+    let mut builder = Builder { cmd, linker, loaded: HashSet::new(), latest };
     builder.mark_latest_as_loaded();
 
-    // With `__CHAUD_RELOAD` set, Chaud will generate references to symbols that
-    // only exist in the running binary (not in the newly compiled code). Using
-    // `true` as the linker ensures that the compilation still succeeds (and has
-    // the nice side-effect of avoiding unnecessary work).
-    builder.cmd.arg("-Clinker=true");
-    builder.cmd.env("__CHAUD_RELOAD", "");
-
-    extract_libs(&mut builder, false).context("Failed to get reload rlibs")?;
-
-    // This may find new objects, ignore them for now.
-    if builder.latest.iter().any(|p| p.extension() == Some("rlib")) {
-        log::warn!("RELOAD CHECK FAILED: Initial reload build unexpectedly found new rlibs");
-    }
-    builder.mark_latest_as_loaded();
-
-    extract_libs(&mut builder, false).context("Failed to get reload rlibs")?;
-
-    // There shouldn't even be new objects this time.
-    if !builder.latest.is_empty() {
-        log::warn!("RELOAD CHECK FAILED: Second reload build unexpectedly found new rlibs");
-    }
-    builder.mark_latest_as_loaded();
+    // Perform an initial build.
+    builder.build()?;
 
     Ok(builder)
 }
@@ -91,38 +112,16 @@ fn verify_fresh(flags: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn extract_libs(builder: &mut Builder, mut warn_dead: bool) -> Result<()> {
-    log::trace!("Running {:?}", builder.cmd);
+fn extract_libs(parts: Vec<String>, loaded: &HashSet<Utf8PathBuf>, latest: &mut Vec<Utf8PathBuf>) {
+    latest.clear();
 
-    let output = builder.cmd.stdout_str()?;
-
-    let output = output.trim();
-    ensure!(!output.contains('\n'), "Too many output lines");
-
-    // We need to check this, because the linker args won't be re-printed for a
-    // fully fresh build, and we need to avoid clearing `latest_libs` in that
-    // case.
-    if output.is_empty() {
-        log::trace!("Empty output, rlibs seem fresh");
-        return Ok(());
-    }
-
-    builder.latest.clear();
-    let mut parts = Shlex::new(output);
-
-    for part in &mut parts {
-        if warn_dead && (part.contains("--gc-sections") || part.contains("-dead_strip")) {
-            warn_dead = false;
-            log::warn!("DEAD CODE CHECK FAILED: `-Clink-dead-code` likely not set");
-        }
-
+    for part in parts {
         let is_rlib = part.ends_with(".rlib");
         let is_obj = part.ends_with(".o");
 
         if !is_rlib && !is_obj {
             continue;
         }
-
         let part = Utf8PathBuf::from(part);
 
         match part.metadata() {
@@ -137,14 +136,23 @@ fn extract_libs(builder: &mut Builder, mut warn_dead: bool) -> Result<()> {
             }
         }
 
-        if !builder.loaded.contains(&part) {
-            builder.latest.push(part);
+        if !loaded.contains(&part) {
+            latest.push(part);
         }
     }
 
-    log::debug!("Found {} new rlibs", builder.latest.len());
+    log::debug!("Found {} new rlibs", latest.len());
+}
 
-    Ok(())
+fn extract_link_args(cmd: &mut Command) -> Result<Vec<String>> {
+    log::trace!("Running {cmd:?}");
+
+    let output = cmd.stdout_str()?;
+
+    let output = output.trim();
+    ensure!(!output.contains('\n'), "Too many output lines");
+
+    shlex::split(output).context("shlex failed")
 }
 
 fn cargo_cmd(flags: &[String]) -> Command {
@@ -157,4 +165,145 @@ fn cargo_cmd(flags: &[String]) -> Command {
         .stderr(Stdio::null());
 
     cmd
+}
+
+fn extract_linker(mut cmd: Command) -> Result<(Linker, Vec<Utf8PathBuf>)> {
+    fn skip_out(parts: &mut Peekable<impl Iterator<Item = String>>) -> Result<()> {
+        if parts.peek().is_some_and(|p| p == "-o") {
+            parts.next();
+            let out = parts.next().context("Too short: -o")?;
+            log::trace!("linker: out: {out:?}");
+        }
+        Ok(())
+    }
+
+    let mut has_strip = false;
+    let mut has_no_whole = false;
+    let mut has_whole = false;
+    let mut check_arg = |arg: &str| {
+        has_strip |= arg.contains("--gc-sections") || arg.contains("-dead_strip");
+        has_no_whole |= arg.contains("--no-whole-archive");
+        has_whole |= arg.contains("--whole-archive") || arg.contains("-all_load");
+    };
+
+    let mut parts = extract_link_args(&mut cmd)?.into_iter().peekable();
+
+    let env = parts.next().context("Too short: env")?;
+    ensure!(env == "env");
+
+    let mut env_clear = vec![];
+    while parts.peek().is_some_and(|p| p == "-u") {
+        parts.next();
+        let name = parts.next().context("Too short: -u")?;
+        log::trace!("linker: env_clear: {name:?}");
+        env_clear.push(name);
+    }
+
+    let mut env_set = vec![];
+    while let Some((k, v)) = parts.peek().and_then(|s| s.split_once('=')) {
+        if !k.chars().all(|c| c.is_ascii_alphabetic() || c == '_') {
+            break;
+        }
+        log::trace!("linker: env_set: {k:?} = {v:?}");
+        env_set.push((k.to_owned(), v.to_owned()));
+        parts.next();
+    }
+
+    let linker = parts.next().context("Too short: linker")?;
+    log::trace!("linker: linker: {linker:?}");
+
+    let mut arg_pre = vec![];
+    while parts.peek().is_some_and(|p| !p.ends_with(".o")) {
+        skip_out(&mut parts)?;
+
+        let arg = parts.next().context("unreachable: peeked")?;
+        check_arg(&arg);
+        log::trace!("linker: arg_pre: {arg:?}");
+        arg_pre.push(arg);
+    }
+
+    let mut files = vec![];
+    while parts.peek().is_some_and(|p| p.ends_with(".o")) {
+        let arg = parts.next().context("unreachable: peeked")?;
+        log::trace!("linker: object: {arg:?}");
+        files.push(arg);
+    }
+
+    while parts.peek().is_some_and(|p| !p.ends_with(".rlib")) {
+        skip_out(&mut parts)?;
+
+        let arg = parts.next().context("unreachable: peeked")?;
+        check_arg(&arg);
+        log::trace!("linker: custom: {arg:?}");
+    }
+
+    while parts.peek().is_some_and(|p| p.ends_with(".rlib")) {
+        let arg = parts.next().context("unreachable: peeked")?;
+        log::trace!("linker: rlib: {arg:?}");
+        files.push(arg);
+    }
+
+    let mut arg_post = vec![];
+    while parts.peek().is_some() {
+        skip_out(&mut parts)?;
+
+        let arg = parts.next().context("unreachable: peeked")?;
+        check_arg(&arg);
+        log::trace!("linker: arg_post: {arg:?}");
+        arg_post.push(arg);
+    }
+
+    if has_strip {
+        log::warn!("DEAD CODE CHECK FAILED: `-Clink-dead-code` likely not set");
+    }
+    if has_no_whole {
+        log::warn!(
+            "CUSTOM LINK CHECK FAILED: `--no-whole-archive` detected, likely from custom native linking"
+        );
+    }
+    if !has_whole {
+        log::warn!("LINK ALL CHECK FAILED: `-Zpre-link-args` likely not set properly");
+    }
+
+    let mut latest = vec![];
+    extract_libs(files, &HashSet::new(), &mut latest);
+
+    Ok((
+        Linker {
+            env_clear: env_clear.into_boxed_slice(),
+            env_set: env_set.into_boxed_slice(),
+            bin: linker,
+            arg_pre: arg_pre.into_boxed_slice(),
+            arg_post: arg_post.into_boxed_slice(),
+        },
+        latest,
+    ))
+}
+
+fn link(dst: &Utf8Path, linker: &Linker, latest: &[Utf8PathBuf]) -> Result<()> {
+    let mut cmd = Command::new(&linker.bin);
+
+    for (k, v) in &linker.env_set {
+        cmd.env(k, v);
+    }
+    for k in &linker.env_clear {
+        cmd.env_remove(k);
+    }
+
+    cmd.args(&linker.arg_pre)
+        .args(latest)
+        .args(&linker.arg_post);
+
+    if cfg!(target_os = "macos") {
+        cmd.args(["-undefined", "dynamic_lookup"]);
+    }
+
+    cmd.args(["-shared", "-o", dst.as_str()]);
+
+    log::trace!("Executing: {cmd:?}");
+
+    let st = cmd.status()?;
+    ensure!(st.success(), "Linking failed: {st}");
+
+    Ok(())
 }

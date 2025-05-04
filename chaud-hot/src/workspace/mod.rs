@@ -1,3 +1,5 @@
+mod patch;
+mod watcher;
+
 pub mod graph;
-pub mod watcher;
 pub mod worker;

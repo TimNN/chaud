@@ -2,6 +2,7 @@ use super::graph::{Graph, KrateDir, KrateIdx};
 use crate::util::latest::{LatestPublisher, LatestReader, make_latest};
 use aho_corasick::{AhoCorasick, Anchored, Input, MatchKind, StartKind};
 use anyhow::{Context as _, Result, ensure};
+use core::ops;
 use hashbrown::HashMap;
 use notify::{
     EventHandler, EventKind, RecommendedWatcher, RecursiveMode, Watcher as _, recommended_watcher,
@@ -12,6 +13,20 @@ use std::time::Instant;
 pub struct Watcher {
     inner: RecommendedWatcher,
     latest: LatestReader<Instant>,
+}
+
+impl ops::Deref for Watcher {
+    type Target = LatestReader<Instant>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.latest
+    }
+}
+
+impl ops::DerefMut for Watcher {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.latest
+    }
 }
 
 impl Watcher {
@@ -71,11 +86,16 @@ impl EventHandler for EvHandler {
             EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => (),
         }
 
-        if event.paths.is_empty() {
-            return;
-        }
+        let mut should_publish = false;
 
         for path in &event.paths {
+            if path.ends_with(Path::new("Cargo.lock")) {
+                log::trace!("Ignoring `Cargo.lock` event");
+                continue;
+            }
+
+            should_publish = true;
+
             match self.paths.lookup(path) {
                 None => {
                     self.report_unmapped_err(path);
@@ -86,7 +106,9 @@ impl EventHandler for EvHandler {
             }
         }
 
-        self.latest.publish(Instant::now());
+        if should_publish {
+            self.latest.publish(Instant::now());
+        }
     }
 }
 

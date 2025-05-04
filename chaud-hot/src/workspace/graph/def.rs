@@ -35,6 +35,10 @@ impl Graph {
         &self.env
     }
 
+    pub fn krates(&self) -> &[Krate] {
+        &self.krates
+    }
+
     pub fn collect_krates_to_watch(&self) -> impl Iterator<Item = &Krate> {
         collect_inner(self).into_iter().map(|k| &self[k])
     }

@@ -1,11 +1,16 @@
-use super::graph::Graph;
+use super::graph::{ClearDirtyResult, Graph};
+use super::patch::PatchResult;
 use super::watcher::Watcher;
 use crate::cargo::Builder;
+use crate::dylib;
 use crate::util::minilog;
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use core::time::Duration;
 use parking_lot::Once;
 use std::thread;
+use std::time::Instant;
+
+const DEBOUNCE: Duration = Duration::from_millis(350);
 
 /// Launch the worker thread.
 ///
@@ -41,24 +46,108 @@ fn work() {
         }
     };
 
-    main(&worker);
+    main(worker);
 }
 
 struct Worker {
     graph: &'static Graph,
     builder: Builder,
     watcher: Watcher,
+    epoch: u32,
 }
 
 fn init() -> Result<Worker> {
     let graph = Graph::new()?;
     let builder = Builder::init(graph.env())?;
     let watcher = Watcher::new(graph)?;
-    Ok(Worker { graph, builder, watcher })
+    Ok(Worker { graph, builder, watcher, epoch: 0 })
 }
 
-fn main(_w: &Worker) {
+fn main(mut w: Worker) {
+    log::debug!("Initialization successful, starting main work loop");
+
     loop {
-        thread::sleep(Duration::from_secs(5));
+        if let Err(e) = main_one(&mut w) {
+            log::error!("Work failed (will try again on next file change): {e:#}");
+        }
+    }
+}
+
+fn main_one(Worker { graph, builder, watcher, epoch }: &mut Worker) -> Result<()> {
+    let env = graph.env();
+
+    log::debug!("Waiting for watcher...");
+    let mut last = watcher.wait();
+
+    'has_dirty: loop {
+        debounce(&mut last, watcher);
+
+        log::debug!("Preparing & building...");
+        match graph.patch_manifests()? {
+            PatchResult::UpToDate => {}
+            PatchResult::PatchApplied => {
+                log::trace!("Patches applied, starting over");
+                // The events from the patches may not have arrived yet, so
+                // manually act as if they had.
+                last = Instant::now();
+                continue 'has_dirty;
+            }
+        }
+
+        match graph.clear_dirty_if_patched() {
+            ClearDirtyResult::Ok => {}
+            ClearDirtyResult::UnpatchedDirty => {
+                log::trace!("Found unpached, starting over");
+                continue 'has_dirty;
+            }
+        }
+
+        if let Err(e) = builder.build() {
+            log::info!("{e:#}");
+            // `cargo build` failing is expected, so don't return an error.
+            return Ok(());
+        }
+
+        if let Some(l) = watcher.check() {
+            log::debug!("Dirty after build, starting over");
+            last = l;
+            continue 'has_dirty;
+        }
+
+        *epoch = epoch.checked_add(1).context("Epoch overflowed")?;
+        let dst = env
+            .chaud_dir()
+            .join(format!("{}.{epoch}.hot", env.bin().as_str()));
+        builder.link_latest(&dst)?;
+
+        log::debug!("Loading {dst:?}...");
+        dylib::load(&dst)?;
+
+        log::info!("Reload complete");
+        graph.clear_patched();
+        builder.mark_latest_as_loaded();
+
+        return Ok(());
+    }
+}
+
+#[expect(clippy::needless_continue, reason = "intentionally explicit")]
+fn debounce(last: &mut Instant, watcher: &mut Watcher) {
+    log::trace!("Debouncing...");
+    loop {
+        match DEBOUNCE.checked_sub(last.elapsed()) {
+            Some(remaining) => {
+                thread::sleep(remaining);
+                // Check for any updates while we slept.
+                match watcher.check() {
+                    Some(l) => {
+                        *last = l;
+                        continue;
+                    }
+                    None => return,
+                }
+            }
+            None => return,
+        };
     }
 }

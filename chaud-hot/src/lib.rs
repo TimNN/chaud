@@ -14,6 +14,7 @@ pub use self::workspace::worker::launch as init;
 pub use ctor::declarative::ctor;
 
 mod cargo;
+mod dylib;
 mod func;
 mod util;
 mod workspace;

@@ -131,9 +131,6 @@ fn hot(input: &Input) -> TokenStream {
 
         if input.reload { storage_ref(input) } else { storage_def(input) },
 
-        // Trigger a rebuild when `__CHAUD_RELOAD` changes.
-        @r#"const _: () = { ::core::option_env!("__CHAUD_RELOAD"); };"#,
-
         @"__chaud_FUNC.get()",
         paren![sep(',', input.arg_idents_outer())]
     ]

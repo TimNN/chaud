@@ -58,8 +58,12 @@ impl Krate {
         &self.name
     }
 
-    pub(super) fn initial_version(&self) -> &str {
+    pub fn initial_version(&self) -> &str {
         &self.initial_version
+    }
+
+    pub fn mani(&self) -> &ManifestPath {
+        &self.mani
     }
 
     pub(super) fn deps(&self) -> &[KrateIdx] {

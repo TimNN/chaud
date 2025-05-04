@@ -2,7 +2,6 @@ use crate::err::Result;
 use crate::expect::Expect::*;
 use crate::parse::Parser;
 use proc_macro::{Delimiter, TokenStream};
-use std::env;
 
 #[derive(Debug, Default)]
 pub struct Arg {
@@ -28,7 +27,7 @@ impl Input {
     pub fn parse(attr: &mut Parser, p: &mut Parser) -> Result<Self> {
         let mut this = Self::default();
         this.hot = cfg!(feature = "unsafe-hot-reload");
-        this.reload = env::var_os("__CHAUD_RELOAD").is_some();
+        this.reload = cfg!(feature = "internal-is-reload");
 
         while !attr.is_eos() {
             match () {
