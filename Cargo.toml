@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["chaud", "chaud-hot", "chaud-macros"]
+members = ["chaud", "chaud-cli", "chaud-hot", "chaud-macros"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
@@ -30,6 +30,7 @@ field_reassign_with_default = "allow"
 ignored_unit_patterns = "allow"
 match_bool = "allow"
 match_same_arms = "allow"
+match_wildcard_for_single_variants = "allow"
 needless_raw_string_hashes = "allow"
 redundant_closure_for_method_calls = "allow"
 single_match_else = "allow"

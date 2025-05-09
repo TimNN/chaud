@@ -30,6 +30,8 @@ fn do_something() -> u32 {
 }
 
 fn main() {
+    chaud::init!();
+
     loop {
         println!("Something: {}", do_something());
         std::thread::sleep(std::time::Duration::from_secs(2));
@@ -44,7 +46,7 @@ the macros.
 
 Enabling the `unsafe-hot-reload` feature will rewrite the items annotated with
 `#[chaud::*]` so that they can be hot-reloaded. Then, once you call
-`chaud::init()`, Chaud does everything necessary to hot-reload your code:
+`chaud::init!()`, Chaud does everything necessary to hot-reload your code:
 
 - It determines which crates in your workspace need to be watched.
 - It watches the filesystem for changes to those crates.
@@ -69,25 +71,39 @@ See [How It Works](#how-it-works) if you are curios about the details.
 
 ## Platform Support
 
-Chaud is tested on `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu` via CI.
-Other Unix platforms are expected to work as well, unless their linkers differ
-significantly from the Linux linker, in which case Chaud may require
-platform-specific support.
+Chaud's hot-reloading implementation is tested on `aarch64-apple-darwin` and
+`x86_64-unknown-linux-gnu` via CI. Other Unix platforms are expected to work as
+well, unless their linkers differ significantly from the Linux linker, in which
+case Chaud may require platform-specific support.
 
-Windows is not supported, because as far as I could tell it is not (easily)
-possible to create DLLs with undefined symbols.
+Hot-reloading is not supported on Windows, because as far as I could tell it is
+not (easily) possible to create DLLs with undefined symbols.
+
+If hot-reloading is not enabled (i.e., the `unsafe-hot-reload` feature is not
+enabled), then Chaud should compile on all platforms. For Windows, this is
+tested via CI.
 
 Chaud is tested on `stable`, `beta` and `nightly`. However, it requires some
-unstable `rustc` flags to operate properly), and generally depends on `rustc`
+unstable `rustc` flags to operate properly, and generally depends on `rustc`
 implementation details that could change at any time.
+
+For now Chaud targets the latest stable Rust version. In the future older Rust
+versions will likely be supported as well, probably with a policy along the
+lines of "if hot-reloading is enabled, the current or previous stable release is
+required; otherwise a stable release from the past 18 months is required".
 
 ## Setup
 
-Add `chaud` as a dependency to your application and call `chaud::init()` during
+Add `chaud` as a dependency to your application and call `chaud::init!()` during
 your startup process (after you have configured [logging](#logging)).
 
-`chaud` must be a dependency of the crate that contains your `fn main`, so that
-its features can be enabled with the `--features chaud/<feature name>` flag.
+The `init!()` **macro** can only be used in the package that contains your
+`fn main`. The `init()` function can be used from any package, but requires more
+manual setup.
+
+`chaud` must be a dependency of the package that contains your `fn main`, so
+that its features can be enabled with the `--features chaud/<feature name>`
+flag.
 
 The easiest way to actually enabled hot-reloading is via
 `cargo install chaud-cli`. This enabled the `cargo chaud` and `chaud-rustc`
@@ -104,14 +120,15 @@ If you cannot use `cargo chaud` (e.g. because `cargo` is invoked by some other
 build tool), you can instead set `RUSTC_WRAPPER=chaud-rustc` to get most of the
 same benefits.
 
-`chaud-rustc` will automatically add the necessary `rustc` flags when it detect
+`chaud-rustc` will automatically add the necessary `rustc` flags when it detects
 compilation of a binary that has hot-reloading enabled.
 
-You still need to manually enable hot-reloading by enabling Chaud's
-`unsafe-hot-reload` feature.
+If used with the `init!()` **macro** it can also detect enabled features
+automatically. In case that does not work, you must manually specify
+`CHAUD_FEATURE_FLAGS` as described in the next section.
 
-It may also be necessary to set the `CHAUD_BUILD_FLAGS` environment variable,
-see the next section.
+To actually enable hot-reloading you must enable Chaud's `unsafe-hot-reload`
+feature.
 
 ### Manual Setup
 
@@ -129,8 +146,9 @@ see the next section.
 - If you are not using `nightly`, you must set `RUSTC_BOOTSTRAP=1` to use the
   `-Z` flag.
 
-- Optionally, if Chaud fails to correctly detect the Cargo build flags, you can
-  set the `CHAUD_BUILD_FLAGS` variable to override Chaud's automatic detection.
+- If you are not using your crate's default features, you set
+  `CHAUD_FEATURE_FLAGS` to inform Chaud about the enabled features. For example,
+  `CHAUD_FEATURE_FLAGS="--no-default-features --features=alpha,beta"`.
 
 ## Cleanup
 
@@ -205,8 +223,8 @@ If that doesn't help, then feel free to open an issue and I'll do my best to
 help. Please include `trace` logs for `chaud`.
 
 To debug issues with undefined symbols, compiling with
-`-Csymbol-mangling-version=v0` can be useful because it include more information
-in the symbol name.
+`-Csymbol-mangling-version=v0` can be useful because it includes more
+information in the symbol name.
 
 ## How It Works
 

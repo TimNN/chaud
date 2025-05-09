@@ -7,8 +7,6 @@ license.workspace = true
 repository.workspace = true
 
 description = "Implementation detail of Chaud."
-categories = []
-keywords = []
 
 edition = "2024"
 rust-version = "1.86"

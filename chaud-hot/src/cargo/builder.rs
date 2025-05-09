@@ -1,4 +1,6 @@
+use super::StdioMode;
 use crate::util::CommandExt as _;
+use crate::util::assert::err_unreachable;
 use crate::workspace::graph::BuildEnv;
 use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
@@ -6,7 +8,8 @@ use core::iter::Peekable;
 use hashbrown::HashSet;
 use nanoserde::DeJson;
 use std::io;
-use std::process::{Command, Stdio};
+use std::process::Command;
+use std::time::SystemTime;
 
 pub struct Builder {
     cmd: Command,
@@ -56,14 +59,18 @@ impl Builder {
 }
 
 fn init_inner(env: &BuildEnv) -> Result<Builder> {
-    verify_fresh(env.flags()).context("Failed to check freshness")?;
+    verify_fresh(env).context("Failed to check freshness")?;
 
-    let mut cmd = cargo_cmd(env.flags());
+    let mut cmd = cargo_cmd(env);
     cmd.args(["--", "--print=link-args"]);
+    cmd.arg(format!(
+        r#"--cfg=chaud_force_dirty="{}""#,
+        current_time_nanos()?
+    ));
 
     let (linker, latest) = extract_linker(cmd).context("Failed to extract linker")?;
 
-    let mut cmd = cargo_cmd(env.flags());
+    let mut cmd = cargo_cmd(env);
     cmd.args([
         "--features",
         "chaud/internal-is-reload",
@@ -85,13 +92,13 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
     Ok(builder)
 }
 
-fn verify_fresh(flags: &[String]) -> Result<()> {
+fn verify_fresh(env: &BuildEnv) -> Result<()> {
     #[derive(DeJson)]
     struct Message {
         fresh: bool,
     }
 
-    let mut cmd = cargo_cmd(flags);
+    let mut cmd = cargo_cmd(env);
 
     log::info!("Verifying freshness: {cmd:?}");
 
@@ -106,7 +113,10 @@ fn verify_fresh(flags: &[String]) -> Result<()> {
     let msg = Message::deserialize_json(line)?;
 
     if !msg.fresh {
-        log::warn!("FRESHNESS CHECK FAILED: The build flags are likely incorrect: {flags:?}");
+        log::warn!(
+            "FRESHNESS CHECK FAILED: The build flags are likely incorrect: {:?}",
+            env.flags()
+        );
     }
 
     Ok(())
@@ -155,15 +165,9 @@ fn extract_link_args(cmd: &mut Command) -> Result<Vec<String>> {
     shlex::split(output).context("shlex failed")
 }
 
-fn cargo_cmd(flags: &[String]) -> Command {
-    let mut cmd = Command::new("cargo");
-
-    cmd.args(["rustc", "-q", "--offline"])
-        .args(flags)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
-
+fn cargo_cmd(env: &BuildEnv) -> Command {
+    let mut cmd = env.cargo_rustc(StdioMode::QuietCapture);
+    cmd.args(["-q", "--offline"]);
     cmd
 }
 
@@ -306,4 +310,13 @@ fn link(dst: &Utf8Path, linker: &Linker, latest: &[Utf8PathBuf]) -> Result<()> {
     ensure!(st.success(), "Linking failed: {st}");
 
     Ok(())
+}
+
+fn current_time_nanos() -> Result<u128> {
+    let now = SystemTime::now();
+    let Ok(now) = now.duration_since(SystemTime::UNIX_EPOCH) else {
+        err_unreachable!();
+    };
+
+    Ok(now.as_nanos())
 }

@@ -10,7 +10,7 @@ description = '''
 A hot-reloading library for Cargo workspaces designed for ease of use. Unix only.
 '''
 categories = ["development-tools"]
-keywords = ["hot-reloading"]
+keywords = ["chaud", "hot-reloading"]
 
 edition = "2024"
 rust-version = "1.86"
@@ -38,6 +38,15 @@ version = "0.1"
 path = "../chaud-hot"
 version = "0.1"
 optional = true
+
+# This ensures that `chaud-hot` (and all of its dependencies) are always added
+# to `Cargo.lock`. Otherwise, if `unsafe-hot-reload` is only ever used via the
+# `--features=chaud/unsafe-hot-reload` command line flag, Cargo would perform
+# depenency version selection (including checking online) on every build
+# including that flag.
+[target.'cfg(any())'.dependencies.chaud-hot]
+path = "../chaud-hot"
+version = "0.1"
 
 [[test]]
 name = "demo"

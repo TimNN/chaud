@@ -1,7 +1,8 @@
 //! The **def**inition of the [`Graph`] type.
 
 use super::{BuildEnv, Krate, KrateIdx, KrateIndex};
-use crate::cargo::metadata::Metadata;
+use crate::cargo::Cargo;
+use crate::cargo::metadata::{ManifestPath, Metadata};
 use crate::util::assert::err_assert;
 use anyhow::{Context as _, Result};
 use core::ops;
@@ -26,8 +27,11 @@ impl ops::Index<KrateIdx> for Graph {
 }
 
 impl Graph {
-    pub fn new() -> Result<&'static Self> {
-        new_inner().context("Failed to load crate graph")
+    pub fn new(
+        root_mani: ManifestPath,
+        feature_flags: Option<&'static str>,
+    ) -> Result<&'static Self> {
+        new_inner(root_mani, feature_flags).context("Failed to load crate graph")
     }
 
     pub fn env(&self) -> &BuildEnv {
@@ -43,11 +47,15 @@ impl Graph {
     }
 }
 
-fn new_inner() -> Result<&'static Graph> {
-    let meta = Metadata::load()?;
+fn new_inner(
+    root_mani: ManifestPath,
+    feature_flags: Option<&'static str>,
+) -> Result<&'static Graph> {
+    let cargo = Cargo::new(root_mani);
+    let meta = cargo.load_metadata()?;
 
     let index = KrateIndex::new(meta.packages())?;
-    let env = BuildEnv::new(&meta, &index)?;
+    let env = BuildEnv::new(cargo, feature_flags, &meta, &index)?;
     let krates = load_krates(&meta, &env, &index)?;
 
     Ok(Box::leak(Box::new(Graph { env, krates })))

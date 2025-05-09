@@ -1,23 +1,25 @@
+use super::Cargo;
+use crate::cargo::StdioMode;
 use crate::util::CommandExt as _;
 use anyhow::{Context as _, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::fmt;
 use core::str::Chars;
 use nanoserde::{DeJson, DeJsonErr, DeJsonState, DeJsonTok};
-use std::process::{Command, Stdio};
 
 #[derive(Debug, DeJson)]
 pub struct Metadata {
     packages: Vec<Package>,
 }
 
-impl Metadata {
-    pub fn load() -> Result<Self> {
-        let buf = run_cargo().context("Failed to run `cargo metadata`")?;
-        let md = Self::deserialize_json(&buf).context("Failed to parse `cargo metadata` output")?;
-        Ok(md)
+impl Cargo {
+    pub fn load_metadata(&self) -> Result<Metadata> {
+        let buf = run_cargo(self).context("Failed to run `cargo metadata`")?;
+        Metadata::deserialize_json(&buf).context("Failed to parse `cargo metadata` output")
     }
+}
 
+impl Metadata {
     pub fn packages(&self) -> &[Package] {
         &self.packages
     }
@@ -42,6 +44,10 @@ impl DeJson for ManifestPath {
 }
 
 impl ManifestPath {
+    pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
+        Self(path.into())
+    }
+
     pub fn path(&self) -> &Utf8Path {
         &self.0
     }
@@ -178,13 +184,10 @@ impl DeJson for TargetKind {
     }
 }
 
-fn run_cargo() -> Result<String> {
-    let mut cmd = Command::new("cargo");
+fn run_cargo(cargo: &Cargo) -> Result<String> {
+    let mut cmd = cargo.cmd("metadata", StdioMode::LoudCapture);
 
-    cmd.args(["metadata", "--format-version=1", "--no-deps"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit());
+    cmd.args(["--format-version=1", "--no-deps"]);
 
     log::trace!("Running {cmd:?}");
 

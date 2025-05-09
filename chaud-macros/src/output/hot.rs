@@ -32,15 +32,15 @@ impl HotInput {
         ]
     }
 
-    fn arg_tys(&self) -> impl Iterator<Item = TokenStream> {
+    fn arg_tys(&self) -> impl Iterator<Item = TokenStream> + use<'_> {
         self.args.iter().map(|a| a.ty.clone())
     }
 
-    fn arg_pats(&self) -> impl Iterator<Item = TokenStream> {
+    fn arg_pats(&self) -> impl Iterator<Item = TokenStream> + use<'_> {
         self.args.iter().map(|a| a.pat.clone())
     }
 
-    fn arg_idents_outer(&self) -> impl Iterator<Item = TokenStream> {
+    fn arg_idents_outer(&self) -> impl Iterator<Item = TokenStream> + use<'_> {
         self.args.iter().enumerate().map(|(i, _)| {
             if self.is_method && i == 0 {
                 tokens![@self]
@@ -50,7 +50,7 @@ impl HotInput {
         })
     }
 
-    fn args_outer(&self) -> impl Iterator<Item = TokenStream> {
+    fn args_outer(&self) -> impl Iterator<Item = TokenStream> + use<'_> {
         self.args.iter().enumerate().map(|(i, a)| {
             if self.is_method && i == 0 {
                 tokens![@self, @:, &a.ty]

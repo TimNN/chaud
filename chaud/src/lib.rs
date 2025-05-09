@@ -72,10 +72,23 @@ pub use chaud_macros::persist;
 
 /// Initializes Chaud.
 ///
+/// If you initialize Chaud from the crate that contains your `fn main`, prefer
+/// calling the [`init!`] macro instead.
+///
+/// # Arguments
+///
+/// * `root_pkg_manifest`: The absolute path to the manifest of the crate that
+///   contains your `fn main`. That crate must have `chaud` as a dependency.
+///
+/// # Behavior
+///
 /// When hot-reloading is **disabled**, this is a no-op.
 ///
 /// When hot-reloading is **enabled**, this starts the worker thread and returns
 /// afterwards.
+///
+/// Only the first call to this function has any effect, subsequent calls are
+/// ignored.
 ///
 /// As described in the [Logging][crate#logging] section, enabling logging is
 /// essential to receive notifications about any failures that may occur while
@@ -84,7 +97,51 @@ pub use chaud_macros::persist;
 /// To ensure basic visibility into such failures, this function will
 /// automatically configure a minimal logger if the [`log`](https://docs.rs/log)
 /// crate has not already been initialized at the time it is called.
-pub fn init() {
+pub fn init(root_pkg_manifest: &str) {
+    // Silence unused variable lint if hot reloading is disabled.
+    let _ = root_pkg_manifest;
     #[cfg(feature = "unsafe-hot-reload")]
-    __internal::init();
+    __internal::init(root_pkg_manifest, None);
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(feature = "unsafe-hot-reload")]
+macro_rules! __init {
+    () => {
+        $crate::__internal::init(
+            env!("CARGO_MANIFEST_PATH"),
+            option_env!("__CHAUD_RUSTC_FEATURE_FLAGS"),
+        )
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(not(feature = "unsafe-hot-reload"))]
+macro_rules! __init {
+    () => {
+        ()
+    };
+}
+
+/// Initializes Chaud.
+///
+/// This must be called from the crate containing your `fn main`. That crate
+/// must have `chaud` as a dependency.
+///
+/// This is mostly equivalent to calling [`init()`]. However, the macro has some
+/// advantages when hot-reloading is **enabled**:
+///
+/// * The manifest path is automatically determined from the
+///   `CARGO_MANIFEST_PATH` environment variable.
+/// * The `CHAUD_FEATURE_FLAGS` environment variable is consumed at build time,
+///   which is required to make feature detection with `chaud-rustc` work.
+///
+/// See the [`init()`] documentation for further details.
+#[macro_export]
+macro_rules! init {
+    () => {
+        $crate::__init!()
+    };
 }

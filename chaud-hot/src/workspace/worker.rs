@@ -2,6 +2,7 @@ use super::graph::{ClearDirtyResult, Graph};
 use super::patch::PatchResult;
 use super::watcher::Watcher;
 use crate::cargo::Builder;
+use crate::cargo::metadata::ManifestPath;
 use crate::dylib;
 use crate::util::minilog;
 use anyhow::{Context as _, Result};
@@ -17,17 +18,19 @@ const DEBOUNCE: Duration = Duration::from_millis(350);
 /// This function is idempotent.
 ///
 /// If [`log`] has not been initialized yet, a minimal logger will be installed.
-pub fn launch() {
+pub fn launch(root_pkg_manifest: &str, feature_flags: Option<&'static str>) {
     static INIT: Once = Once::new();
 
-    INIT.call_once(|| {
+    let root_mani = ManifestPath::new(root_pkg_manifest);
+
+    INIT.call_once(move || {
         minilog::init();
 
         log::trace!("Launching worker thread");
 
         let spawn_result = thread::Builder::new()
             .name("chaud-worker".to_owned())
-            .spawn(work);
+            .spawn(move || work(root_mani, feature_flags));
 
         if let Err(e) = spawn_result {
             log::error!("Failed to spawn Chaud worker: {e:#}");
@@ -35,10 +38,10 @@ pub fn launch() {
     });
 }
 
-fn work() {
+fn work(root_mani: ManifestPath, feature_flags: Option<&'static str>) {
     log::debug!("Chaud worker thread is running");
 
-    let worker = match init() {
+    let worker = match init(root_mani, feature_flags) {
         Ok(val) => val,
         Err(e) => {
             log::error!("Initialization failed, shutting down worker thread: {e:#}");
@@ -56,8 +59,8 @@ struct Worker {
     epoch: u32,
 }
 
-fn init() -> Result<Worker> {
-    let graph = Graph::new()?;
+fn init(root_mani: ManifestPath, feature_flags: Option<&'static str>) -> Result<Worker> {
+    let graph = Graph::new(root_mani, feature_flags)?;
     let builder = Builder::init(graph.env())?;
     let watcher = Watcher::new(graph)?;
     Ok(Worker { graph, builder, watcher, epoch: 0 })
