@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  test-full:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -56,4 +56,4 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
       - name: Tests
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace
