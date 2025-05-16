@@ -9,7 +9,7 @@ use hashbrown::HashSet;
 use nanoserde::DeJson;
 use std::io;
 use std::process::Command;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
 pub struct Builder {
     cmd: Command,
@@ -155,10 +155,26 @@ fn extract_libs(parts: Vec<String>, loaded: &HashSet<Utf8PathBuf>, latest: &mut 
 }
 
 fn extract_link_args(cmd: &mut Command) -> Result<Vec<String>> {
-    log::trace!("Running {cmd:?}");
+    if log::log_enabled!(log::Level::Trace) {
+        log::trace!("Running {cmd:?}");
+    } else {
+        log::info!("Cargo build in progress...");
+    }
 
-    let output = cmd.stdout_str()?;
+    let start = Instant::now();
+    let output = cmd.stdout_str();
 
+    log::info!(
+        "Cargo build {} in {:.1}s",
+        if output.is_ok() {
+            "succeeded"
+        } else {
+            "failed"
+        },
+        start.elapsed().as_secs_f32()
+    );
+
+    let output = output?;
     let output = output.trim();
     ensure!(!output.contains('\n'), "Too many output lines");
 

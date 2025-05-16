@@ -70,8 +70,10 @@ fn extract(args: &[String]) -> Result<Extracted> {
         }
     }
 
-    Ok(Extracted {
-        is_binary,
-        feature_flags: format!("-F{}", features.join(",")),
-    })
+    let feature_flags = match features.as_slice() {
+        [] => String::new(),
+        f => format!("-F{}", f.join(",")),
+    };
+
+    Ok(Extracted { is_binary, feature_flags })
 }

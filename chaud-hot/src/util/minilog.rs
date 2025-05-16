@@ -4,11 +4,7 @@ struct MiniLogger;
 
 impl Log for MiniLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        let Some(module) = metadata.target().strip_prefix("chaud") else {
-            return false;
-        };
-
-        module.is_empty() || module.starts_with("::")
+        metadata.target().starts_with("chaud")
     }
 
     fn log(&self, record: &Record) {
@@ -17,10 +13,9 @@ impl Log for MiniLogger {
         }
 
         eprintln!(
-            "[chaud] [{}] [{}:{}]: {}",
+            "[chaud] [{}] [{}]: {}",
             record.level(),
-            record.file().unwrap_or("???"),
-            record.line().unwrap_or(0),
+            record.target(),
             record.args()
         );
     }
@@ -38,7 +33,7 @@ pub fn init() {
         log::warn!("No logger installed. Installing minimal stderr logging.");
     } else if !log::log_enabled!(Level::Warn) && !cfg!(feature = "silence-log-level-warning") {
         eprintln!(
-            "[chaud] [WARNING] Logging for `chaud` is disabled, you may miss \
+            "[chaud] [WARN] Logging for `chaud` is disabled, you may miss \
                     important messages about hot reloading issues."
         );
     }

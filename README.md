@@ -190,7 +190,11 @@ logging as the only real option for reporting any errors. The
 [`log`](https://docs.rs/log) crate is used for that purpose.
 
 Many things can go wrong while hot-reloading, so to avoid any confusion it is
-important that you enable logging for Chaud at least at the **`warn`** level.
+important that you enable logging for Chaud at least at the **`warn`** level to
+be informed about any issues.
+
+Enabling the **`info`** level is recommended to track what Chaud is doing, so
+you know when e.g. a Cargo build is running, or a hot-reload completes.
 
 If you do not configure any logger, Chaud will install a simple one (which
 prints to stderr) for you.
