@@ -10,4 +10,3 @@ mod into;
 pub mod assert;
 pub mod latest;
 pub mod minilog;
-pub mod relaxed;

@@ -45,19 +45,20 @@ fn main() {
 
 fn test_expansion(cargo: &Cargo) {
     let expect = expect_file!["../../demo/expanded_cold.rs"];
-    expect.assert_eq(&expand(cargo, ""));
+    expect.assert_eq(&expand(cargo, "", []));
 
     let expect = expect_file!["../../demo/expanded_hot.rs"];
-    expect.assert_eq(&expand(cargo, "chaud/unsafe-hot-reload"));
+    expect.assert_eq(&expand(cargo, "chaud/unsafe-hot-reload", []));
 
     let expect = expect_file!["../../demo/expanded_reload.rs"];
     expect.assert_eq(&expand(
         cargo,
-        "chaud/unsafe-hot-reload,chaud/internal-is-reload",
+        "chaud/unsafe-hot-reload",
+        ["__CHAUD_RELOAD"],
     ));
 }
 
-fn expand(cargo: &Cargo, features: &str) -> String {
+fn expand<'a>(cargo: &Cargo, features: &str, env_flags: impl AsRef<[&'a str]>) -> String {
     let mut cmd = cargo.base_cmd("rustc");
     cmd.stdout(Stdio::piped())
         .args([
@@ -68,6 +69,10 @@ fn expand(cargo: &Cargo, features: &str) -> String {
             "-Zunpretty=expanded",
         ])
         .env("RUSTC_BOOTSTRAP", "1");
+
+    for flag in env_flags.as_ref() {
+        cmd.env(flag, "1");
+    }
 
     let out = cmd.output().expect("cargo expand failed");
     assert!(out.status.success(), "cargo expand failed: {}", out.status);

@@ -20,14 +20,6 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         rust: ["stable", "beta", "nightly"]
-        include:
-          # rust channel config
-          - rust: beta
-            # FIXME: Move this to `Cargo.toml` once it reaches stable.
-            lints: '"-Aclippy::unnecessary_debug_formatting"'
-          - rust: nightly
-            # FIXME: Move this to `Cargo.toml` once it reaches stable.
-            lints: '"-Aclippy::unnecessary_debug_formatting"'
 
     steps:
       - name: Checkout Repository

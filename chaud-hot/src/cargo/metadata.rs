@@ -27,7 +27,6 @@ impl Metadata {
 #[derive(Debug, DeJson)]
 pub struct Package {
     name: PackageName,
-    version: String,
     manifest_path: ManifestPath,
     dependencies: Vec<Dependency>,
     targets: Vec<Target>,
@@ -56,10 +55,6 @@ impl ManifestPath {
 impl Package {
     pub fn name(&self) -> &PackageName {
         &self.name
-    }
-
-    pub fn version(&self) -> &str {
-        &self.version
     }
 
     pub fn manifest_path(&self) -> &ManifestPath {

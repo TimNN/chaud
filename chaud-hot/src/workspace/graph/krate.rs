@@ -1,6 +1,6 @@
-use super::{BuildEnv, ClearDirtyResult, KrateFlags, KrateIdx, KrateIndex};
+use super::{BuildEnv, KrateIdx, KrateIndex};
 use crate::cargo::metadata::{
-    Dependency, DependencyKind, ManifestPath, Package, PackageName, Target, TargetKind, TargetName,
+    Dependency, DependencyKind, Package, PackageName, Target, TargetKind, TargetName,
 };
 use crate::util::etx;
 use anyhow::{Context as _, Result, ensure};
@@ -25,11 +25,8 @@ impl KrateDir {
 pub struct Krate {
     idx: KrateIdx,
     pkg: PackageName,
-    initial_version: String,
-    mani: ManifestPath,
     deps: Box<[KrateIdx]>,
     dirs: Box<[KrateDir]>,
-    flags: KrateFlags,
 }
 
 impl fmt::Display for Krate {
@@ -48,42 +45,12 @@ impl Krate {
         self.idx
     }
 
-    pub fn initial_version(&self) -> &str {
-        &self.initial_version
-    }
-
-    pub fn mani(&self) -> &ManifestPath {
-        &self.mani
-    }
-
     pub(super) fn deps(&self) -> &[KrateIdx] {
         &self.deps
     }
 
     pub fn dirs(&self) -> &[KrateDir] {
         &self.dirs
-    }
-
-    pub fn needs_patch(&self) -> bool {
-        self.flags.needs_patch()
-    }
-
-    pub fn mark_patched(&self) {
-        self.flags.mark_patched();
-    }
-
-    pub fn mark_dirty(&self) {
-        if self.flags.mark_dirty() {
-            log::debug!("Mark dirty: {self}");
-        }
-    }
-
-    pub fn clear_patched(&self) {
-        self.flags.clear_patched();
-    }
-
-    pub fn clear_dirty_if_patched(&self) -> ClearDirtyResult {
-        self.flags.clear_dirty_if_patched()
     }
 }
 
@@ -93,9 +60,6 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
         .get_pkg(&pkg)
         .context("Package not found in the index")?;
 
-    let initial_version = package.version().to_owned();
-    let mani = package.manifest_path().to_owned();
-
     let deps = filter_deps(index, package.dependencies());
 
     let root_bin = match env.root() == idx {
@@ -104,15 +68,7 @@ fn new_inner(env: &BuildEnv, index: &KrateIndex, package: &Package) -> Result<Kr
     };
     let dirs = krate_dirs(root_bin, package).context("Failed to determine crate dirs")?;
 
-    Ok(Krate {
-        idx,
-        pkg,
-        initial_version,
-        mani,
-        deps,
-        dirs,
-        flags: KrateFlags::new(),
-    })
+    Ok(Krate { idx, pkg, deps, dirs })
 }
 
 fn filter_deps(index: &KrateIndex, deps: &[Dependency]) -> Box<[KrateIdx]> {

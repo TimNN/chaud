@@ -16,7 +16,6 @@ proc-macro = true
 
 [features]
 unsafe-hot-reload = []
-internal-is-reload = []
 
 [lints]
 workspace = true

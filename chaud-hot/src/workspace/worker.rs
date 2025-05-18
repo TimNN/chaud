@@ -1,5 +1,4 @@
-use super::graph::{ClearDirtyResult, Graph};
-use super::patch::PatchResult;
+use super::graph::Graph;
 use super::watcher::Watcher;
 use crate::cargo::Builder;
 use crate::cargo::metadata::ManifestPath;
@@ -86,24 +85,6 @@ fn main_one(Worker { graph, builder, watcher, epoch }: &mut Worker) -> Result<()
         debounce(&mut last, watcher);
 
         log::debug!("Preparing & building...");
-        match graph.patch_manifests()? {
-            PatchResult::UpToDate => {}
-            PatchResult::PatchApplied => {
-                log::trace!("Patches applied, starting over");
-                // The events from the patches may not have arrived yet, so
-                // manually act as if they had.
-                last = Instant::now();
-                continue 'has_dirty;
-            }
-        }
-
-        match graph.clear_dirty_if_patched() {
-            ClearDirtyResult::Ok => {}
-            ClearDirtyResult::UnpatchedDirty => {
-                log::trace!("Found unpached, starting over");
-                continue 'has_dirty;
-            }
-        }
 
         if let Err(e) = builder.build() {
             log::info!("{e:#}");
@@ -127,8 +108,6 @@ fn main_one(Worker { graph, builder, watcher, epoch }: &mut Worker) -> Result<()
         dylib::load(&dst)?;
 
         log::info!("Reload complete");
-        graph.clear_patched();
-        builder.mark_latest_as_loaded();
 
         return Ok(());
     }

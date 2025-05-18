@@ -51,25 +51,6 @@ pub fn run(mut cmd: Command) -> Result<()> {
     Ok(())
 }
 
-pub fn stdout(mut cmd: Command) -> Result<String> {
-    verbose!("Executing: {cmd:?}");
-
-    let out = match cmd.output() {
-        Ok(s) => s,
-        Err(e) => bail!("Failed to spawn ({e}): {cmd:?}"),
-    };
-    ensure!(
-        out.status.success(),
-        "Failed to run ({}): {cmd:?}",
-        out.status
-    );
-
-    match String::from_utf8(out.stdout) {
-        Ok(s) => Ok(s),
-        Err(_) => bail!("Non-UTF8 output: {cmd:?}"),
-    }
-}
-
 pub fn verbose(x: impl fmt::Display) {
     static VERBOSE: LazyLock<bool> = LazyLock::new(|| env::var_os("CHAUD_CLI_VERBOSE").is_some());
 

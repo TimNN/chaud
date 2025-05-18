@@ -19,12 +19,6 @@ rust-version = "1.86"
 anyhow = "1.0.98"
 lexopt = "0.3.1"
 shlex = "1.3.0"
-toml_edit = "0.22.26"
-
-[dependencies.nanoserde]
-version = "0.2.1"
-default-features = false
-features = ["json"]
 
 [lints]
 workspace = true

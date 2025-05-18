@@ -5,7 +5,7 @@ use crate::workspace::graph::BuildEnv;
 use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::iter::Peekable;
-use hashbrown::HashSet;
+use hashbrown::HashMap;
 use nanoserde::DeJson;
 use std::io;
 use std::process::Command;
@@ -14,7 +14,7 @@ use std::time::{Instant, SystemTime};
 pub struct Builder {
     cmd: Command,
     linker: Linker,
-    loaded: HashSet<Utf8PathBuf>,
+    initial: HashMap<Utf8PathBuf, SystemTime>,
     latest: Vec<Utf8PathBuf>,
 }
 
@@ -46,15 +46,14 @@ impl Builder {
             return Ok(());
         }
 
-        extract_libs(parts, &self.loaded, &mut self.latest);
-        Ok(())
-    }
+        self.latest.clear();
+        extract_libs(parts, &self.initial, |p, _| {
+            log::trace!("Found new rlib: {p:?}");
+            self.latest.push(p);
+        });
 
-    pub fn mark_latest_as_loaded(&mut self) {
-        for l in self.latest.drain(..) {
-            let inserted = self.loaded.insert(l);
-            debug_assert!(inserted);
-        }
+        log::debug!("Found {} new rlibs", self.latest.len());
+        Ok(())
     }
 }
 
@@ -68,12 +67,11 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
         current_time_nanos()?
     ));
 
-    let (linker, latest) = extract_linker(cmd).context("Failed to extract linker")?;
+    let (linker, initial) = extract_linker(cmd).context("Failed to extract linker")?;
 
     let mut cmd = cargo_cmd(env);
+    cmd.env("__CHAUD_RELOAD", "1");
     cmd.args([
-        "--features",
-        "chaud/internal-is-reload",
         "--",
         "--print=link-args",
         // With `__CHAUD_RELOAD` set, Chaud will generate references to symbols
@@ -83,8 +81,7 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
         "-Clinker=true",
     ]);
 
-    let mut builder = Builder { cmd, linker, loaded: HashSet::new(), latest };
-    builder.mark_latest_as_loaded();
+    let mut builder = Builder { cmd, linker, initial, latest: vec![] };
 
     // Perform an initial build.
     builder.build()?;
@@ -122,9 +119,11 @@ fn verify_fresh(env: &BuildEnv) -> Result<()> {
     Ok(())
 }
 
-fn extract_libs(parts: Vec<String>, loaded: &HashSet<Utf8PathBuf>, latest: &mut Vec<Utf8PathBuf>) {
-    latest.clear();
-
+fn extract_libs(
+    parts: Vec<String>,
+    initial: &HashMap<Utf8PathBuf, SystemTime>,
+    mut found: impl FnMut(Utf8PathBuf, SystemTime),
+) {
     for part in parts {
         let is_rlib = part.ends_with(".rlib");
         let is_obj = part.ends_with(".o");
@@ -135,23 +134,27 @@ fn extract_libs(parts: Vec<String>, loaded: &HashSet<Utf8PathBuf>, latest: &mut 
         let part = Utf8PathBuf::from(part);
 
         match part.metadata() {
-            Ok(m) if m.is_file() => {}
+            Ok(m) if m.is_file() => {
+                let mtime = match m.modified() {
+                    Ok(t) => t,
+                    Err(e) => {
+                        log::warn!("Failed to get mtime of existing file {part:?}: {e}");
+                        continue;
+                    }
+                };
+
+                if initial.get(&part).is_none_or(|v| *v != mtime) {
+                    found(part, mtime);
+                }
+            }
             Err(e) if is_obj && e.kind() == io::ErrorKind::NotFound => {
                 log::trace!("Ignoring missing obj {part:?}");
-                continue;
             }
             _ => {
                 log::warn!("Ignoring invalid rlib {part:?}");
-                continue;
             }
         }
-
-        if !loaded.contains(&part) {
-            latest.push(part);
-        }
     }
-
-    log::debug!("Found {} new rlibs", latest.len());
 }
 
 fn extract_link_args(cmd: &mut Command) -> Result<Vec<String>> {
@@ -187,7 +190,7 @@ fn cargo_cmd(env: &BuildEnv) -> Command {
     cmd
 }
 
-fn extract_linker(mut cmd: Command) -> Result<(Linker, Vec<Utf8PathBuf>)> {
+fn extract_linker(mut cmd: Command) -> Result<(Linker, HashMap<Utf8PathBuf, SystemTime>)> {
     fn skip_out(parts: &mut Peekable<impl Iterator<Item = String>>) -> Result<()> {
         if parts.peek().is_some_and(|p| p == "-o") {
             parts.next();
@@ -285,8 +288,13 @@ fn extract_linker(mut cmd: Command) -> Result<(Linker, Vec<Utf8PathBuf>)> {
         log::warn!("LINK ALL CHECK FAILED: `-Zpre-link-args` likely not set properly");
     }
 
-    let mut latest = vec![];
-    extract_libs(files, &HashSet::new(), &mut latest);
+    let mut initial = HashMap::new();
+    extract_libs(files, &HashMap::new(), |p, m| {
+        if p.as_str().ends_with(".rlib") {
+            initial.insert(p, m);
+        }
+    });
+    log::debug!("Found {} initial rlibs", initial.len());
 
     Ok((
         Linker {
@@ -296,7 +304,7 @@ fn extract_linker(mut cmd: Command) -> Result<(Linker, Vec<Utf8PathBuf>)> {
             arg_pre: arg_pre.into_boxed_slice(),
             arg_post: arg_post.into_boxed_slice(),
         },
-        latest,
+        initial,
     ))
 }
 

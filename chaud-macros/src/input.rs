@@ -2,6 +2,7 @@ use crate::err::Result;
 use crate::expect::Expect::*;
 use crate::parse::Parser;
 use proc_macro::{Delimiter, TokenStream};
+use std::env;
 
 #[derive(Debug, Copy, Clone)]
 pub struct CommonInput {
@@ -44,7 +45,7 @@ impl Default for CommonInput {
     fn default() -> Self {
         Self {
             hot: cfg!(feature = "unsafe-hot-reload"),
-            reload: cfg!(feature = "internal-is-reload"),
+            reload: env::var_os("__CHAUD_RELOAD").is_some(),
         }
     }
 }

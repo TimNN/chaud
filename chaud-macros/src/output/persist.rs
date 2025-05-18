@@ -38,6 +38,8 @@ impl PersistInput {
 }
 
 fn output(input: &PersistInput) -> TokenStream {
+    // `reload` (derived from the `__CHAUD_RELOAD` environment variable) is
+    // intentionally not tracked.
     if input.common.reload {
         storage_ref(input)
     } else {
