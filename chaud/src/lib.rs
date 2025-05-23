@@ -5,6 +5,8 @@
 #[cfg(feature = "unsafe-hot-reload")]
 pub use chaud_hot as __internal;
 
+pub mod cycle;
+
 /// Marks a function that should be hot-reloaded.
 ///
 /// When hot-reloading is **disabled**, this is essentially a no-op.

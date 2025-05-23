@@ -1,4 +1,4 @@
 #[inline(never)]
 pub fn version() -> u32 {
-    3001
+    3001 // VERSION
 }

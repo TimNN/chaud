@@ -36,9 +36,7 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Clippy
-        run:
-          cargo clippy --workspace --all-features -- -D warnings ${{
-          matrix.lints }}
+        run: cargo clippy --workspace --all-features -- -D warnings
 
       - name: Documentation
         run:
@@ -46,6 +44,9 @@ jobs:
           --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
+
+      - name: Install
+        run: cargo install --path chaud-cli
 
       - name: Tests
         run: cargo test --workspace

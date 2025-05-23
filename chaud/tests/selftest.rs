@@ -4,10 +4,12 @@
     reason = "less restrictions on internal tests"
 )]
 
-use fs_extra::dir::CopyOptions;
+use std::fs::FileTimes;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::SystemTime;
 use std::{env, fs};
+use walkdir::WalkDir;
 
 fn main() {
     let tmp = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
@@ -29,14 +31,14 @@ fn main() {
     eprintln!("\n---\nSELFTEST: `cargo chaud --release`\n---");
     selftest(&dirs, &["chaud", "-Fselftest", "--release"], &[]);
 
-    eprintln!("\n---\nSELFTEST: `RUSTC_WRAPPER=... cargo run`\n---");
+    eprintln!("\n---\nSELFTEST: `RUSTC_WRAPPER=\"...\" cargo run`\n---");
     selftest(
         &dirs,
         &["run", "-Fselftest,chaud/unsafe-hot-reload"],
         &[("RUSTC_WRAPPER", "chaud-rustc")],
     );
 
-    eprintln!("\n---\nSELFTEST: `RUSTC_WRAPPER=... cargo run --release`\n---");
+    eprintln!("\n---\nSELFTEST: `RUSTC_WRAPPER=\"...\" cargo run --release`\n---");
     selftest(
         &dirs,
         &["run", "-Fselftest,chaud/unsafe-hot-reload", "--release"],
@@ -52,17 +54,7 @@ struct Dirs<'a> {
 }
 
 fn selftest(dirs: &Dirs, args: &[&str], env: &[(&str, &str)]) {
-    if dirs.dst.exists() {
-        fs::remove_dir_all(dirs.dst).expect("remove dst failed");
-    }
-    fs::create_dir_all(dirs.dst).expect("crate dst failed");
-
-    fs_extra::dir::copy(
-        dirs.demo,
-        dirs.dst,
-        &CopyOptions { content_only: true, ..Default::default() },
-    )
-    .expect("demo copy failed");
+    sync(dirs.demo, dirs.dst);
 
     let manifest = dirs.dst.join("Cargo.toml");
 
@@ -79,11 +71,53 @@ fn run(dirs: &Dirs, args: &[&str], env: &[(&str, &str)]) {
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
         .args(args)
-        .arg("--target-dir")
-        .arg(dirs.target)
+        .env("CARGO_TARGET_DIR", dirs.target)
         .envs(env.iter().copied())
         .current_dir(dirs.dst);
 
     let status = cmd.status().expect("cargo failed");
     assert!(status.success(), "cargo failed: {status}");
+}
+
+fn sync(src: &Path, dst: &Path) {
+    if dst.exists() {
+        fs::remove_dir_all(dst).expect("remove dst failed");
+    }
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent).expect("create dst parent failed");
+    }
+
+    let mut buf = PathBuf::new();
+
+    let times = FileTimes::new().set_modified(SystemTime::now());
+
+    for entry in WalkDir::new(src) {
+        let entry = entry.expect("walking src failed");
+        let rel = entry
+            .path()
+            .strip_prefix(src)
+            .expect("src not parent of entry");
+
+        buf.clear();
+        buf.push(dst);
+        buf.push(rel);
+
+        if entry.file_type().is_dir() {
+            fs::create_dir(&buf).expect("create dir in dst failed");
+            continue;
+        }
+        assert!(entry.file_type().is_file());
+
+        fs::copy(entry.path(), &buf).expect("copy file to dst failed");
+        let f = fs::OpenOptions::new()
+            .create(false)
+            .append(true)
+            .open(&buf)
+            .expect("open file in dst failed");
+
+        // `fs::copy` copies mtimes. We need to update the mtime, otherwise
+        // the mtime moves back in time from Cargo's perspective, which breaks
+        // dirty detection.
+        f.set_times(times).expect("set times in dst failed");
+    }
 }

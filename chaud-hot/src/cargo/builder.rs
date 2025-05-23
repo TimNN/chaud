@@ -79,6 +79,9 @@ fn init_inner(env: &BuildEnv) -> Result<Builder> {
         // code). Using `true` as the linker ensures that the compilation still
         // succeeds (and has the nice side-effect of avoiding unnecessary work).
         "-Clinker=true",
+        // Ensure that object files for the root crate are kept around (because
+        // we don't have an rlib for them).
+        "-Csave-temps",
     ]);
 
     let mut builder = Builder { cmd, linker, initial, latest: vec![] };

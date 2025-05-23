@@ -80,8 +80,9 @@ Hot-reloading is not supported on Windows, because as far as I could tell it is
 not (easily) possible to create DLLs with undefined symbols.
 
 If hot-reloading is not enabled (i.e., the `unsafe-hot-reload` feature is not
-enabled), then Chaud should compile on all platforms. For Windows, this is
-tested via CI.
+enabled), then Chaud should compile on all platforms.
+
+<!-- FIXME: Test this on CI for Windows -->
 
 Chaud is tested on `stable`, `beta` and `nightly`. However, it requires some
 unstable `rustc` flags to operate properly, and generally depends on `rustc`

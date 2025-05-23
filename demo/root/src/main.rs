@@ -3,16 +3,15 @@ use std::thread;
 
 #[chaud::hot]
 fn version() -> u32 {
-    1001
+    1001 // VERSION
 }
 
 fn main() {
     #[cfg(feature = "selftest")]
     if true {
-        selftest::init_log();
+        let st = selftest::Selftest::init_before_chaud();
         chaud::init!();
-        selftest::run(version);
-        return;
+        return st.run(version);
     }
 
     env_logger::init();

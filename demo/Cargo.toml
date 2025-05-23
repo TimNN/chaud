@@ -4,5 +4,6 @@ members = ["cold", "expand", "leaf", "mid", "root", "selftest"]
 
 [workspace.dependencies]
 chaud.path = "../chaud"
+chaud-hot.path = "../chaud-hot"
 env_logger = "0.11.8"
 log = "0.4.27"

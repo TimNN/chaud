@@ -2,8 +2,8 @@ use super::graph::Graph;
 use super::watcher::Watcher;
 use crate::cargo::Builder;
 use crate::cargo::metadata::ManifestPath;
-use crate::dylib;
 use crate::util::minilog;
+use crate::{cycle, dylib};
 use anyhow::{Context as _, Result};
 use core::time::Duration;
 use parking_lot::Once;
@@ -47,6 +47,8 @@ fn work(root_mani: ManifestPath, feature_flags: Option<&'static str>) {
             return;
         }
     };
+
+    cycle::init_done();
 
     main(worker);
 }
@@ -108,6 +110,7 @@ fn main_one(Worker { graph, builder, watcher, epoch }: &mut Worker) -> Result<()
         dylib::load(&dst)?;
 
         log::info!("Reload complete");
+        cycle::did_reload();
 
         return Ok(());
     }
