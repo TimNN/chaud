@@ -30,11 +30,16 @@ pub fn actual_args() -> Result<Vec<String>> {
     Ok(args)
 }
 
-pub fn link_pre_args() -> Result<&'static str> {
+pub fn link_args() -> Result<&'static [&'static str]> {
+    // See docs.rs/chaud#how-it-works.
     if cfg!(target_os = "macos") {
-        Ok("-Zpre-link-args=-Wl,-all_load")
+        Ok(&["-Zpre-link-args=-Wl,-all_load"])
     } else if cfg!(unix) {
-        Ok("-Zpre-link-args=-Wl,--whole-archive")
+        Ok(&[
+            "-Zpre-link-args=-Wl,--whole-archive",
+            "-Clink-args=-Wl,--allow-multiple-definition",
+            "-Clink-args=-Wl,--export-dynamic",
+        ])
     } else {
         bail!("Hot-reloading not supported on the current platform");
     }

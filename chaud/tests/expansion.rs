@@ -11,8 +11,6 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 fn main() {
-    eprintln!("{:?}", std::env::current_dir());
-
     let tmp = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
     let target = tmp.join("demo_target");
 

@@ -5,7 +5,7 @@
 )]
 
 use anyhow::{Context as _, Result};
-use chaud_cli::{actual_args, link_pre_args, run};
+use chaud_cli::{actual_args, link_args, run};
 use std::env;
 use std::ffi::OsStr;
 use std::process::Command;
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         rust_flags.push(" ");
     }
     rust_flags.push("-Clink-dead-code ");
-    rust_flags.push(link_pre_args()?);
+    rust_flags.push(link_args()?.join(" "));
 
     let feature_flags =
         extract_feature_flags(build_flags).context("Failed to extract feature flags")?;

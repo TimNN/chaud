@@ -6,10 +6,11 @@ use anyhow::{Context as _, Result, bail, ensure};
 use camino::{Utf8Path, Utf8PathBuf};
 use core::iter::Peekable;
 use hashbrown::HashMap;
+use memchr::memmem;
 use nanoserde::DeJson;
-use std::io;
 use std::process::Command;
 use std::time::{Instant, SystemTime};
+use std::{fs, io};
 
 pub struct Builder {
     cmd: Command,
@@ -48,6 +49,12 @@ impl Builder {
 
         self.latest.clear();
         extract_libs(parts, &self.initial, |p, _| {
+            if is_alloc_shim(&p) {
+                // Linking the alloc shim causes problems on Linux.
+                log::trace!("Ignoring alloc shim: {p:?}");
+                return;
+            }
+
             log::trace!("Found new rlib: {p:?}");
             self.latest.push(p);
         });
@@ -214,15 +221,15 @@ fn extract_linker(mut cmd: Command) -> Result<(Linker, HashMap<Utf8PathBuf, Syst
 
     let mut parts = extract_link_args(&mut cmd)?.into_iter().peekable();
 
-    let env = parts.next().context("Too short: env")?;
-    ensure!(env == "env");
-
     let mut env_clear = vec![];
-    while parts.peek().is_some_and(|p| p == "-u") {
+    if parts.peek().is_some_and(|p| p == "env") {
         parts.next();
-        let name = parts.next().context("Too short: -u")?;
-        log::trace!("linker: env_clear: {name:?}");
-        env_clear.push(name);
+        while parts.peek().is_some_and(|p| p == "-u") {
+            parts.next();
+            let name = parts.next().context("Too short: -u")?;
+            log::trace!("linker: env_clear: {name:?}");
+            env_clear.push(name);
+        }
     }
 
     let mut env_set = vec![];
@@ -346,4 +353,24 @@ fn current_time_nanos() -> Result<u128> {
     };
 
     Ok(now.as_nanos())
+}
+
+fn is_alloc_shim(p: &Utf8Path) -> bool {
+    if p.extension() != Some("o") {
+        return false;
+    }
+
+    match is_alloc_shim_inner(p) {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("Failed to check for alloc shim: {e}");
+            false
+        }
+    }
+}
+
+fn is_alloc_shim_inner(p: &Utf8Path) -> Result<bool> {
+    let buf = fs::read(p)?;
+    // FIXME: Make this more reliable, and maybe cache the results.
+    Ok(memmem::find(&buf, b".bss.__rust_no_alloc_shim_is_unstable").is_some())
 }

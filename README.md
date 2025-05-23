@@ -67,7 +67,8 @@ See [How It Works](#how-it-works) if you are curios about the details.
 > it has not been audited by any (community) experts.
 >
 > Chaud is still experimental and needs more extensive testing, especially in
-> non-standard linking scenarios and on platforms other than macOS.
+> non-standard linking scenarios, larger projects, and on platforms other than
+> macOS.
 
 ## Platform Support
 
@@ -136,13 +137,24 @@ feature.
 - As when using `chaud-rustc`, you must enable the `unsafe-hot-reload` feature
   to actually enabled hot-reloading.
 
-- To ensure that everything is linked correcty, you must pass the
-  `-Clink-dead-code -Zpre-link-args=<platform specific>` flags to `rustc` when
-  it links your application. This is often accomplished via the `RUSTFLAGS`
-  environment variable. The `<platform specifci>` part is:
+- To ensure that everything is linked correcty, you must pass additional flags
+  to `rustc` when it links your application. This is often accomplished via the
+  `RUSTFLAGS` environment variable. The `<platform specific>` part is:
 
-  - On macOS: `-Wl,-all_load`
-  - On Linux: `-Wl,--whole-archive`
+  - On all platforms:
+    - `-Clink-dead-code`: Disable dead-code stripping.
+  - On macOS:
+    - `-Zpre-link-args=-Wl,-all_load`: Include all symbols from static
+      libraries.
+      - Without this, hot-reloaded code would be unable to use any function from
+        a dependency that wasn't already being used by the original code.
+  - On Linux:
+    - `-Zpre-link-args=-Wl,--whole-archive`: Include all symbols from static
+      libraries.
+    - `-Clink-args=-Wl,--allow-multiple-definition`: Ignore duplicate symbols
+      from Rust's `compiler_builtins` and `libgcc`.
+    - `-Clink-args=-Wl,--export-dynamic`: Make all symbols in the executable
+      available to hot-reloaded libraries.
 
 - If you are not using `nightly`, you must set `RUSTC_BOOTSTRAP=1` to use the
   `-Z` flag.
@@ -247,16 +259,6 @@ information in the symbol name.
 
   To see the full expansion, check out the `expanded_*.rs` files in the `/demo/`
   directory.
-
-- The `-Clink-dead-code -Zpre-link-args=..` flags are necessary to avoid
-  problems with undefined symbols:
-
-  - `-Clink-dead-code` disables dead-code stripping (which Rust otherwise
-    enables by default).
-  - `-Zpre-link-args=...` causes the linker to include all symbols from static
-    libraries in the final artifact, even if they are completely unused.
-    - Without this, hot-reloaded code would be unable to use any function from a
-      dependency that wasn't already being used by the original code.
 
 - `chaud::init()` isn't particulary intersting. It spawns a background thread
   that:

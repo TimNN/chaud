@@ -3,7 +3,7 @@
     reason = "less restrictions on build-time tools"
 )]
 use anyhow::{Context as _, Result, bail};
-use chaud_cli::{actual_args, link_pre_args, run};
+use chaud_cli::{actual_args, link_args, run};
 use std::env;
 use std::process::Command;
 
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
 
         if extracted.is_binary {
             cmd.arg("-Clink-dead-code")
-                .arg(link_pre_args()?)
+                .args(link_args()?)
                 .env("RUSTC_BOOTSTRAP", "1");
         }
 
