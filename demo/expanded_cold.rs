@@ -32,7 +32,7 @@ static ITEMS: Collector = {
     Collector { buf }
 };
 impl Collector {
-    pub fn collect(self: &Self, item: String) {
+    pub fn collect(self: &Collector, item: String) {
         let this = self;
         this.buf.lock().unwrap().push(item);
     }

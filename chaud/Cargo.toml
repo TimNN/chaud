@@ -46,7 +46,11 @@ path = "../chaud-hot"
 version = "0.1"
 
 [[test]]
-name = "demo"
+name = "expansion"
+harness = false
+
+[[test]]
+name = "selftest"
 harness = false
 
 [lints]

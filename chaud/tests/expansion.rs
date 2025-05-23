@@ -5,40 +5,23 @@
 )]
 
 use expect_test::expect_file;
-use fs_extra::dir::CopyOptions;
+use std::env;
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::{env, fs};
 
 fn main() {
+    eprintln!("{:?}", std::env::current_dir());
+
     let tmp = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
-    let dst = tmp.join("demo");
     let target = tmp.join("demo_target");
 
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     root.pop();
-    let src = root.join("demo");
-    let chaud = root.join("chaud");
-    let chaud = chaud.as_os_str().to_str().expect("not-utf8 root");
 
-    if dst.exists() {
-        fs::remove_dir_all(&dst).expect("remove dst failed");
-    }
-    fs::create_dir_all(&dst).expect("crate dst failed");
+    let demo = root.join("demo");
 
-    fs_extra::dir::copy(
-        src,
-        &dst,
-        &CopyOptions { content_only: true, ..Default::default() },
-    )
-    .expect("demo copy failed");
-
-    let cargo = Cargo { target, manifest: dst.join("Cargo.toml") };
-
-    let mani = fs::read_to_string(&cargo.manifest).expect("failed to read manifest");
-    let mani = mani.replace("../chaud", chaud);
-    fs::write(&cargo.manifest, mani).expect("failed to write manifest");
+    let cargo = Cargo { manifest: demo.join("Cargo.toml"), target };
 
     test_expansion(&cargo);
 }

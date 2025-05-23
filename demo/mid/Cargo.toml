@@ -1,0 +1,8 @@
+[package]
+name = "mid"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chaud.workspace = true
+leaf.path = "../leaf"

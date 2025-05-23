@@ -34,7 +34,7 @@ pub static ITEMS: Collector = {
 
 impl Collector {
     #[chaud::hot(self)]
-    pub fn collect(this: &Self, item: String) {
+    pub fn collect(this: &Collector, item: String) {
         this.buf.lock().unwrap().push(item);
     }
 }

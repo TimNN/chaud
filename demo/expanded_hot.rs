@@ -69,10 +69,10 @@ static ITEMS: Collector = {
 };
 impl Collector {
     #[inline]
-    pub fn collect(self: &Self, p1: String) {
+    pub fn collect(self: &Collector, p1: String) {
         struct __chaud_func;
         unsafe impl ::chaud::__internal::Func for __chaud_func {
-            type Ptr = fn(&Self, String);
+            type Ptr = fn(&Collector, String);
             const NAME: &'static str = "expand::collect";
             const actual: Self::Ptr = |this, item| {
                 this.buf.lock().unwrap().push(item);

@@ -26,7 +26,6 @@ impl Log for MiniLogger {
 /// Configure [`MiniLogger`] as the logger if no logger has been configured yet.
 ///
 /// This function should be called only once.
-#[inline]
 pub fn init() {
     if log::set_logger(&MiniLogger).is_ok() {
         log::set_max_level(LevelFilter::Warn);

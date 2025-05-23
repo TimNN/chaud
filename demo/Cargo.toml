@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["expand"]
+members = ["cold", "expand", "leaf", "mid", "root", "selftest"]
 
 [workspace.dependencies]
 chaud.path = "../chaud"
+env_logger = "0.11.8"
+log = "0.4.27"

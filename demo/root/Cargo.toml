@@ -1,0 +1,13 @@
+[package]
+name = "root"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+selftest = ["dep:selftest"]
+
+[dependencies]
+selftest = { path = "../selftest", optional = true }
+chaud.workspace = true
+env_logger.workspace = true
+mid.path = "../mid"

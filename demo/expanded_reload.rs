@@ -18,6 +18,7 @@ fn unit() {
                 #[link_name = "_CHAUD::expand::STATE"]
                 safe static STATE: AtomicU32;
             }
+            const _: bool = ::core::option::Option::Some("1").is_some();
 
             STATE.fetch_add(1, Relaxed);
         };
@@ -26,6 +27,7 @@ fn unit() {
         #[link_name = "_CHAUD::expand::unit"]
         safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;
     }
+    const _: bool = ::core::option::Option::Some("1").is_some();
 
     #[allow(unused)]
     fn __chaud__reload() {
@@ -65,6 +67,7 @@ pub(crate) fn single_with_attrs<'a>(p0: &'a u32) -> u32 {
         #[link_name = "_CHAUD::expand::single_with_attrs"]
         safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;
     }
+    const _: bool = ::core::option::Option::Some("1").is_some();
     #[allow(unused)]
     fn __chaud__reload() {
         #[allow(unsafe_code)]
@@ -103,6 +106,7 @@ pub fn multi<'a, 'b>(p0: &'b bool, p1: &'a u32, p2: &'a u32) -> (&'a u32, &'b bo
         #[link_name = "_CHAUD::expand::multi"]
         safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;
     }
+    const _: bool = ::core::option::Option::Some("1").is_some();
     #[allow(unused)]
     fn __chaud__reload() {
         #[allow(unsafe_code)]
@@ -134,12 +138,13 @@ unsafe extern "Rust" {
     #[link_name = "_CHAUD::expand::ITEMS"]
     safe static ITEMS: Collector;
 }
+const _: bool = ::core::option::Option::Some("1").is_some();
 impl Collector {
     #[inline]
-    pub fn collect(self: &Self, p1: String) {
+    pub fn collect(self: &Collector, p1: String) {
         struct __chaud_func;
         unsafe impl ::chaud::__internal::Func for __chaud_func {
-            type Ptr = fn(&Self, String);
+            type Ptr = fn(&Collector, String);
             const NAME: &'static str = "expand::collect";
             const actual: Self::Ptr = |this, item| {
                 this.buf.lock().unwrap().push(item);
@@ -149,6 +154,7 @@ impl Collector {
             #[link_name = "_CHAUD::expand::collect"]
             safe static __chaud_FUNC: ::chaud::__internal::FuncStorage<__chaud_func>;
         }
+        const _: bool = ::core::option::Option::Some("1").is_some();
         #[allow(unused)]
         fn __chaud__reload() {
             #[allow(unsafe_code)]
