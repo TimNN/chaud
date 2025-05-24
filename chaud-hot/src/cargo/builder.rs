@@ -195,8 +195,19 @@ fn extract_link_args(cmd: &mut Command) -> Result<Vec<String>> {
 }
 
 fn cargo_cmd(env: &BuildEnv) -> Command {
-    let mut cmd = env.cargo_rustc(StdioMode::QuietCapture);
-    cmd.args(["-q", "--offline"]);
+    let loud = log::log_enabled!(log::Level::Trace);
+    let mode = match loud {
+        true => StdioMode::LoudCapture,
+        false => StdioMode::QuietCapture,
+    };
+
+    let mut cmd = env.cargo_rustc(mode);
+    cmd.arg("--offline");
+
+    if !loud {
+        cmd.arg("-q");
+    }
+
     cmd
 }
 

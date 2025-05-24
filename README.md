@@ -231,6 +231,13 @@ To debug issues with undefined symbols, compiling with
 `-Csymbol-mangling-version=v0` can be useful because it includes more
 information in the symbol name.
 
+Undefined `__CHAUD::` symbols:
+
+- If you added the `#[chaud::*]` attributes to a new item, you need to do a full
+  restart of the application.
+- Remove `crate-type` overrides from `Cargo.toml` files. Compling non-`rlib`
+  dependencies is currently not supported.
+
 ## How It Works
 
 - During the initial compilation with the `unsafe-hot-reload` feature enabled,
