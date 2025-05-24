@@ -3,13 +3,11 @@
 <!-- Parts of this README are based on https://github.com/dtolnay's setup. -->
 <!-- Badge colors were picked from https://uchu.style/. -->
 
-<!-- TODO: Updated URLs after publishing. -->
-
-[<img alt="github" src="https://img.shields.io/badge/github-timnn/chaud-afecb6?style=for-the-badge&logo=github" height="20">](https://github.com/dtolnay/anyhow)
-[<img alt="crates.io" src="https://img.shields.io/crates/v/regex?style=for-the-badge&logo=rust&color=3984f2" height="20">](https://crates.io/crates/chaud)
+[<img alt="github" src="https://img.shields.io/badge/github-timnn/chaud-afecb6?style=for-the-badge&logo=github" height="20">](https://github.com/TimNN/chaud)
+[<img alt="crates.io" src="https://img.shields.io/crates/v/chaud?style=for-the-badge&logo=rust&color=3984f2" height="20">](https://crates.io/crates/chaud)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-chaud-c7abe9?style=for-the-badge&logo=docs.rs" height="20">](https://docs.rs/chaud)
-<img alt="license" src="https://img.shields.io/crates/l/regex?style=for-the-badge&color=e3e5e5" height="20">
-[<img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rust-lang/regex/ci.yml?style=for-the-badge" height="20">](https://github.com/TimNN/chaud/actions/workflows/ci.yml)
+<img alt="license" src="https://img.shields.io/crates/l/chaud?style=for-the-badge&color=e3e5e5" height="20">
+[<img alt="CI" src="https://img.shields.io/github/actions/workflow/status/TimNN/chaud/ci.yml?style=for-the-badge" height="20">](https://github.com/TimNN/chaud/actions/workflows/ci.yml)
 
 _Chaud_ (French for "hot") is a hot-reloading library for Cargo workspaces
 designed for ease of use. [Unix only](#platform-support).
