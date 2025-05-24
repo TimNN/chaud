@@ -31,7 +31,7 @@ pub fn actual_args() -> Result<Vec<String>> {
 }
 
 pub fn link_args() -> Result<&'static [&'static str]> {
-    // See docs.rs/chaud#how-it-works.
+    // See https://docs.rs/chaud#manual-setup.
     if cfg!(target_os = "macos") {
         Ok(&["-Zpre-link-args=-Wl,-all_load"])
     } else if cfg!(unix) {
